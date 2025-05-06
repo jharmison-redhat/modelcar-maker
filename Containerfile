@@ -6,7 +6,6 @@ FROM registry.access.redhat.com/ubi9/ubi-minimal:latest as base
 
 FROM base as download
 
-ARG ORAS_VERSION
 RUN --mount=type=tmpfs,target=/tmp \
     --mount=type=tmpfs,target=/var/cache \
     --mount=type=cache,id=dnf-cache,target=/var/cache/yum \
