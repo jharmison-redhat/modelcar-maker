@@ -35,7 +35,7 @@ common_args+=(--build-arg=REF=$(branch))
 
 for model in "${models[@]}"; do
     model_args=("--build-arg=MODEL=${model}")
-    tag="$(echo "$model" | sed -e 's/\//--/g' -e 's/./_/g' -e 's/.*/\L&/')-modelcar"
+    tag="$(echo "$model" | sed -e 's/\//--/g' -e 's/\./_/g' -e 's/.*/\L&/')-modelcar"
     image="${MODELCAR_REGISTRY}/${MODELCAR_REPO}:${tag}"
     model_args+=("--build-arg=NAME=${tag}")
     podman build . "${common_args[@]}" "${model_args[@]}" -t "$image"
