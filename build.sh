@@ -6,7 +6,7 @@ cd "$(dirname "$(realpath "$0")")"
 
 mapfile models <models.txt
 
-common_args=()
+common_args=(--pull=newer)
 
 if [ -n "$HF_TOKEN" ]; then
     common_args+=(--secret id=hf-token,env=HF_TOKEN)
@@ -28,8 +28,10 @@ if ! podman login --get-login "${MODELCAR_REGISTRY}" >/dev/null 2>&1; then
 fi
 
 for model in "${models[@]}"; do
+    model_args=("--build-arg=MODEL=${model}")
     tag="$(echo "$model" | sed -e 's/\//--/g' -e 's/./_/g' -e 's/.*/\L&/')-modelcar"
     image="${MODELCAR_REGISTRY}/${MODELCAR_REPO}:${tag}"
-    podman build . --pull=newer "${common_args[@]}" --build-arg=NAME="${tag}" --build-arg=MODEL=$model -t "$image"
+    model_args+=("--build-args=NAME=${tag}")
+    podman build . "${common_args[@]}" "${model_args[@]}" -t "$image"
     podman push "$image" || nologin
 done
