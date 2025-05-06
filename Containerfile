@@ -29,6 +29,8 @@ RUN --mount=type=cache,id=hf-cache,target=/tmp/hf \
 
 FROM base as modelcar
 
+COPY --from=download /working/ /
+
 ARG NAME \
     MODEL \
     REF
@@ -43,5 +45,3 @@ LABEL \
     summary="${MODEL} model car image" \
     url="https://github.com/jharmison-redhat/modelcar-maker" \
     vcs-ref="${REF}"
-
-COPY --from=download /working/ /
