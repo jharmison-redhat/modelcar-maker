@@ -29,9 +29,9 @@ RUN --mount=type=cache,id=hf-cache,target=/tmp/hf \
 
 FROM base as modelcar
 
-ARG NAME
-ARG MODEL
-ARG REF
+ARG NAME \
+    MODEL \
+    REF
 
 LABEL \
     name=${NAME}-modelcar \
