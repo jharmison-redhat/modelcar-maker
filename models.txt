@@ -10,3 +10,5 @@ Qwen/Qwen3-8B
 Qwen/Qwen3-14B
 Qwen/Qwen3-14B-FP8
 Qwen/Qwen3-8B-FP8
+intfloat/multilingual-e5-large-instruct
+intfloat/multilingual-e5-large
