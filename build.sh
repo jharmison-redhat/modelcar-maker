@@ -4,7 +4,23 @@ set -e
 
 cd "$(dirname "$(realpath "$0")")"
 
-mapfile models <models.txt
+rebuild=false
+models=()
+while ((${#@} > 0)); do
+    case "$1" in
+    --rebuild,-r)
+        rebuild=true
+        ;;
+    *)
+        models+=("$1")
+        ;;
+    esac
+    shift
+done
+
+if ! (("${#models}" > 0)); then
+    mapfile -t models <models.txt
+fi
 
 common_args=(--pull=newer)
 
@@ -26,6 +42,9 @@ function nologin {
 function branch {
     git branch 2>/dev/null | sed -e '/^[^*]/d' -e 's/* \(.*\)/\1/'
 }
+function modelcar_exists {
+    skopeo inspect docker://"${1}" >/dev/null 2>&1
+}
 
 if ! podman login --get-login "${MODELCAR_REGISTRY}" >/dev/null 2>&1; then
     nologin
@@ -34,9 +53,15 @@ fi
 common_args+=(--build-arg=REF=$(branch))
 
 for model in "${models[@]}"; do
-    model_args=("--build-arg=MODEL=${model}")
     tag="$(echo "$model" | sed -e 's/\//--/g' -e 's/\./_/g' -e 's/.*/\L&/')-modelcar"
     image="${MODELCAR_REGISTRY}/${MODELCAR_REPO}:${tag}"
+    if ! $rebuild; then
+        if modelcar_exists "$image"; then
+            echo "$model already available at $image, to rebuild anyways pass --rebuild" >&2
+            continue
+        fi
+    fi
+    model_args=("--build-arg=MODEL=${model}")
     model_args+=("--build-arg=NAME=${tag}")
     podman build . "${common_args[@]}" "${model_args[@]}" -t "$image"
     podman push "$image" || nologin
