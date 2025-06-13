@@ -53,6 +53,9 @@ fi
 common_args+=(--build-arg=REF=$(branch))
 
 for model in "${models[@]}"; do
+    if [[ $model =~ ^#.* ]]; then
+        continue
+    fi
     tag="$(echo "$model" | sed -e 's/\//--/g' -e 's/\./_/g' -e 's/.*/\L&/')-modelcar"
     image="${MODELCAR_REGISTRY}/${MODELCAR_REPO}:${tag}"
     if ! $rebuild; then
