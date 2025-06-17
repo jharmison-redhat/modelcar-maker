@@ -1,1 +1,13 @@
-.hf-token
+# Python development things
+.venv
+.tox
+__version__.py
+*.pyc
+*.egg-info
+build
+dist
+*.env
+
+# Preserve Containerfiles, even if not other files
+models/*/*
+!models/*/Containerfile

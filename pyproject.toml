@@ -1,0 +1,55 @@
+[project]
+name = "modelcar-maker"
+dynamic = ["version"]
+requires-python = ">=3.11"
+authors = [{ name = "James Harmison", email = "jharmison@redhat.com" }]
+description = """\
+A tool to build modelcar images with layers per file\
+"""
+license = { file = "LICENSE" }
+classifiers = [
+    "License :: OSI Approved :: ISC License (ISCL)",
+    "Operating System :: POSIX :: Linux",
+]
+dependencies = [
+    "dynaconf >=3.2.11,<3.3.0",
+    "pydantic >=2.11.7,<2.12.0",
+    "typer >=0.16.0,<0.17",
+    "huggingface-hub >=0.33.0,<0.34",
+    "Jinja2 >=3.1.6,<3.2",
+]
+
+[project.optional-dependencies]
+dev = ["tox"]
+
+[project.urls]
+Source = "https://github.com/jharmison-redhat/modelcar-maker"
+Documentation = "https://github.com/jharmison-redhat/modelcar-maker"
+
+[project.scripts]
+modelcar-maker = "modelcar_maker.cli:cli"
+
+[tool.setuptools.package-data]
+modelcar_maker = ["defaults.toml", "Containerfile.j2"]
+
+[tool.setuptools_scm]
+write_to = "src/modelcar_maker/__version__.py"
+
+[build-system]
+requires = ["setuptools", "wheel", "setuptools-scm"]
+build-backend = "setuptools.build_meta"
+
+[tool.black]
+skip-string-normalization = false
+line-length = 120
+target-version = ["py311"]
+
+[tool.isort]
+profile = "black"
+force_single_line = true
+line_length = 120
+src_paths = ["src", "tests"]
+
+[tool.pyright]
+venvPath = "."
+venv = ".venv"
