@@ -120,7 +120,10 @@ def build(
             skip_if_exists=skip_if_exists,
         )
         if result.skipped:
-            rprint(f"{model} was skipped as it already exists at {image_repo}.")
+            if result.image_cleaned_up:
+                rprint(f"{model} was skipped as it already exists at {image_repo} (but it was cleaned up locally).")
+            else:
+                rprint(f"{model} was skipped as it already exists at {image_repo}.")
         if result.image_cleaned_up:
             rprint(
                 f"{model} was downloaded to {result.downloaded_to}, built as {result.image}, pushed, and then cleaned up."

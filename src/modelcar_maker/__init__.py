@@ -34,6 +34,9 @@ def process(
     if skip_if_exists:
         if image_exists(model, image_repo):
             result.skipped = True
+            if cleanup:
+                if do_image_rm(model, image_repo):
+                    result.image_cleaned_up = True
             return result
 
     download_dir = hf_download(model)
@@ -48,7 +51,7 @@ def process(
         result.image_pushed = True
 
     if cleanup and push:
-        do_image_rm(model, image_repo)
-        result.image_cleaned_up = True
+        if do_image_rm(model, image_repo):
+            result.image_cleaned_up = True
 
     return result

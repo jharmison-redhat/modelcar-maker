@@ -88,14 +88,19 @@ def do_push(model: str, repo: str, authfile: Path | None) -> None:
     podman("push", args=args)
 
 
-def do_image_rm(model: str, repo: str) -> None:
-    podman(
-        "image",
-        args=[
-            "rm",
-            _image(model, repo),
-        ],
-    )
+def do_image_rm(model: str, repo: str) -> bool:
+    try:
+        podman(
+            "image",
+            args=[
+                "rm",
+                _image(model, repo),
+            ],
+        )
+        return True
+    except Exception as e:
+        logger.warning(e)
+        return False
 
 
 def image_exists(model: str, repo: str) -> bool:
