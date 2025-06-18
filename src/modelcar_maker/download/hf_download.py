@@ -1,6 +1,7 @@
 from pathlib import Path
 
 from huggingface_hub import snapshot_download
+from tqdm.rich import tqdm_rich
 
 from ..util import logger
 from ..util import normalize
@@ -13,6 +14,6 @@ def hf_download(repo_id: str) -> Path:
     if not download_dir.is_dir():
         download_dir.mkdir(parents=True, exist_ok=True)
 
-    snapshot_download(repo_id, local_dir=download_dir)
+    snapshot_download(repo_id, local_dir=download_dir, tqdm_class=tqdm_rich)
 
     return download_dir
