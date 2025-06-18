@@ -96,6 +96,7 @@ def do_image_rm(model: str, repo: str) -> bool:
                 "rm",
                 _image(model, repo),
             ],
+            printer=logger.debug,
         )
         return True
     except Exception as e:
