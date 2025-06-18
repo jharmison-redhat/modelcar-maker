@@ -1,0 +1,32 @@
+FROM registry.access.redhat.com/ubi9/ubi-minimal:latest
+ARG MODEL=ibm-granite/granite-3.2-8b-instruct \
+    NAME=ibm-granite--granite-3_2-8b-instruct \
+    REF=main
+
+COPY config.json /models/
+COPY generation_config.json /models/
+COPY added_tokens.json /models/
+COPY merges.txt /models/
+COPY README.md /models/
+COPY model.safetensors.index.json /models/
+COPY special_tokens_map.json /models/
+COPY tokenizer_config.json /models/
+COPY vocab.json /models/
+COPY tokenizer.json /models/
+COPY model-00004-of-00004.safetensors /models/
+COPY model-00003-of-00004.safetensors /models/
+COPY model-00002-of-00004.safetensors /models/
+COPY model-00001-of-00004.safetensors /models/
+
+COPY README.md /modelcard.md
+
+LABEL \
+    name=${NAME}-modelcar \
+    io.k8s.display-name=${NAME}-modelcar \
+    description="A very small RHEL image which contains ${MODEL} downloaded to /models" \
+    io.k8s.description="A very small RHEL image which contains ${MODEL} downloaded to /models" \
+    maintainer="James Harmison <jharmiso@redhat.com>" \
+    release=1 \
+    summary="${MODEL} model car image" \
+    url="https://github.com/jharmison-redhat/modelcar-maker" \
+    vcs-ref="${REF}"

@@ -1,0 +1,35 @@
+FROM registry.access.redhat.com/ubi9/ubi-minimal:latest
+ARG MODEL=RedHatAI/Mistral-Small-3.1-24B-Instruct-2503-FP8-dynamic \
+    NAME=redhatai--mistral-small-3_1-24b-instruct-2503-fp8-dynamic \
+    REF=main
+
+COPY chat_template.json /models/
+COPY README.md /models/
+COPY config.json /models/
+COPY generation_config.json /models/
+COPY preprocessor_config.json /models/
+COPY model.safetensors.index.json /models/
+COPY recipe.yaml /models/
+COPY special_tokens_map.json /models/
+COPY processor_config.json /models/
+COPY tokenizer_config.json /models/
+COPY tokenizer.json /models/
+COPY model-00006-of-00006.safetensors /models/
+COPY model-00003-of-00006.safetensors /models/
+COPY model-00002-of-00006.safetensors /models/
+COPY model-00005-of-00006.safetensors /models/
+COPY model-00004-of-00006.safetensors /models/
+COPY model-00001-of-00006.safetensors /models/
+
+COPY README.md /modelcard.md
+
+LABEL \
+    name=${NAME}-modelcar \
+    io.k8s.display-name=${NAME}-modelcar \
+    description="A very small RHEL image which contains ${MODEL} downloaded to /models" \
+    io.k8s.description="A very small RHEL image which contains ${MODEL} downloaded to /models" \
+    maintainer="James Harmison <jharmiso@redhat.com>" \
+    release=1 \
+    summary="${MODEL} model car image" \
+    url="https://github.com/jharmison-redhat/modelcar-maker" \
+    vcs-ref="${REF}"

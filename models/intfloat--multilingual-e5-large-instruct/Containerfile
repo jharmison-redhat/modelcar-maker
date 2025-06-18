@@ -1,0 +1,30 @@
+FROM registry.access.redhat.com/ubi9/ubi-minimal:latest
+ARG MODEL=intfloat/multilingual-e5-large-instruct \
+    NAME=intfloat--multilingual-e5-large-instruct \
+    REF=main
+
+COPY onnx /models/
+COPY 1_Pooling /models/
+COPY modules.json /models/
+COPY config.json /models/
+COPY config_sentence_transformers.json /models/
+COPY README.md /models/
+COPY sentence_xlm-roberta_config.json /models/
+COPY special_tokens_map.json /models/
+COPY tokenizer_config.json /models/
+COPY sentencepiece.bpe.model /models/
+COPY tokenizer.json /models/
+COPY model.safetensors /models/
+
+COPY README.md /modelcard.md
+
+LABEL \
+    name=${NAME}-modelcar \
+    io.k8s.display-name=${NAME}-modelcar \
+    description="A very small RHEL image which contains ${MODEL} downloaded to /models" \
+    io.k8s.description="A very small RHEL image which contains ${MODEL} downloaded to /models" \
+    maintainer="James Harmison <jharmiso@redhat.com>" \
+    release=1 \
+    summary="${MODEL} model car image" \
+    url="https://github.com/jharmison-redhat/modelcar-maker" \
+    vcs-ref="${REF}"
