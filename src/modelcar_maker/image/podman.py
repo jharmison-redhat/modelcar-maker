@@ -1,9 +1,11 @@
+import json
+import shlex
 import subprocess
 from pathlib import Path
 from typing import Any
-from typing import Generator
+from typing import Callable
 
-from rich import print
+from rich import print as rprint
 
 from ..util import logger
 from ..util import normalize
@@ -24,7 +26,8 @@ def podman(
     command: str = "build",
     context_dir: Path | None = None,
     args: list[Any] = [],
-) -> Generator[str, Any, Any]:
+    printer: Callable = print,
+) -> str:
     argv = [
         "podman",
         command,
@@ -41,18 +44,21 @@ def podman(
     if context_dir is not None:
         kwargs["cwd"] = context_dir
 
-    logger.debug(f"Executing: {argv}")
+    printer(f"+ {shlex.join(argv)}")
     proc = subprocess.Popen(
         argv,
         **kwargs,
     )
     assert proc.stdout is not None
+    output = []
     for line in map(_utf8ify, iter(proc.stdout.readline, b"")):
-        yield line
+        printer(line)
+        output.append(line)
 
     ret = proc.wait()
     if ret != 0:
         raise RuntimeError(f"{command} failed with code {ret}")
+    return "\n".join(output)
 
 
 def _image(model: str, repo: str) -> str:
@@ -60,22 +66,42 @@ def _image(model: str, repo: str) -> str:
     return f"{repo}:{tag}"
 
 
-def build(model: str, repo: str, model_dir: Path) -> None:
-    for line in podman(
+def do_build(model: str, repo: str, model_dir: Path) -> None:
+    podman(
         "build",
         args=[
             "-t",
             _image(model, repo),
         ],
         context_dir=model_dir,
-    ):
-        print(line)
+        printer=rprint,
+    )
 
 
-def push(model: str, repo: str, authfile: Path | None) -> None:
+def do_push(model: str, repo: str, authfile: Path | None) -> None:
     args = list()
     if authfile is not None:
         args.extend(["--authfile", str(authfile)])
     args.append(_image(model, repo))
-    for line in podman("push", args=args):
-        print(line)
+    podman("push", args=args)
+
+
+def do_image_rm(model: str, repo: str) -> None:
+    podman(
+        "image",
+        args=[
+            "rm",
+            _image(model, repo),
+        ],
+    )
+
+
+def image_exists(model: str, repo: str) -> bool:
+    raw_json = podman(
+        "search",
+        args=[repo, "--list-tags", "--format", "json", "--limit", "1000"],
+        printer=logger.debug,
+    )
+    model_tag = normalize(model) + "-modelcar"
+    tags = json.loads(raw_json)[0].get("Tags", [])
+    return model_tag in tags
