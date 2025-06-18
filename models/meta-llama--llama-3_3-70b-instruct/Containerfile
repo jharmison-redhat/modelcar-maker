@@ -32,7 +32,6 @@ COPY model-00021-of-00030.safetensors /models/
 COPY model-00022-of-00030.safetensors /models/
 COPY model-00023-of-00030.safetensors /models/
 COPY model.safetensors.index.json /models/
-COPY original /models/
 COPY model-00024-of-00030.safetensors /models/
 COPY model-00025-of-00030.safetensors /models/
 COPY model-00027-of-00030.safetensors /models/
