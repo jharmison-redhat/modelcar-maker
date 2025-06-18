@@ -2,11 +2,10 @@ from pathlib import Path
 from typing import Optional
 
 import typer
-from rich import print
+from rich import print as rprint
 from typing_extensions import Annotated
 
 from .. import process
-from ..download import hf_download
 from ..util import make_logger
 from ..util import settings
 
@@ -15,7 +14,7 @@ def version_callback(value: bool):
     if value:
         from ..__version__ import version
 
-        print(version)
+        rprint(version)
         raise typer.Exit()
 
 
@@ -62,6 +61,20 @@ def build(
             help="The authfile to use for the podman push",
         ),
     ] = settings.image.get("authfile"),
+    cleanup: Annotated[
+        bool,
+        typer.Option(
+            "--clean-up/--no-clean-up",
+            help="Clean up the container images after push to free up space",
+        ),
+    ] = settings.image.cleanup,
+    skip_if_exists: Annotated[
+        bool,
+        typer.Option(
+            "--skip-if-exists/--no-skip-if-exists",
+            help="Skip downloading and publishing the image if it already exists",
+        ),
+    ] = settings.image.skip_if_exists,
     verbose: Annotated[
         int,
         typer.Option(
@@ -93,7 +106,16 @@ def build(
     if model is None:
         if not isinstance(settings.models.default, list):
             raise RuntimeError(f"Default models should be a list, not {type(settings.models.default)}")
-        for model in settings.models.default:
-            process(str(model), image_repo, authfile=authfile)
+        models = settings.models.default
     else:
-        process(model, image_repo, authfile=authfile)
+        models = [model]
+
+    for model in models:
+        process(
+            str(model),
+            image_repo,
+            authfile=authfile,
+            push=push,
+            cleanup=cleanup,
+            skip_if_exists=skip_if_exists,
+        )
