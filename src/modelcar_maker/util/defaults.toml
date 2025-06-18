@@ -2,6 +2,8 @@
 registry = "quay.io"
 repository = "jharmison/models"
 push = true
+cleanup = false
+skip_if_exists = true
 
 [models]
 default = [
