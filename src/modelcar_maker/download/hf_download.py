@@ -1,10 +1,14 @@
+import warnings
 from pathlib import Path
 
 from huggingface_hub import snapshot_download
+from tqdm import TqdmExperimentalWarning
 from tqdm.rich import tqdm_rich
 
 from ..util import logger
 from ..util import normalize
+
+warnings.filterwarnings("ignore", category=TqdmExperimentalWarning)
 
 
 def hf_download(repo_id: str) -> Path:
