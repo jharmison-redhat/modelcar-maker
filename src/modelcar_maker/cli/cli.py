@@ -85,7 +85,7 @@ def build(
             show_default=False,
             metavar="",
         ),
-    ] = 0,
+    ] = settings.meta.verbosity,
     _: Annotated[
         bool,
         typer.Option(

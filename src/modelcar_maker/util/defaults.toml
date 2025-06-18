@@ -1,3 +1,6 @@
+[meta]
+verbosity = 0
+
 [image]
 registry = "quay.io"
 repository = "jharmison/models"

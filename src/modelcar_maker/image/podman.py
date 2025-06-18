@@ -57,7 +57,7 @@ def podman(
 
     ret = proc.wait()
     if ret != 0:
-        raise RuntimeError(f"{command} failed with code {ret}")
+        raise RuntimeError(f"{shlex.join(argv)} -- failed with code {ret}")
     return "\n".join(output)
 
 
@@ -96,11 +96,10 @@ def do_image_rm(model: str, repo: str) -> bool:
                 "rm",
                 _image(model, repo),
             ],
-            printer=logger.debug,
+            printer=logger.info,
         )
         return True
-    except Exception as e:
-        logger.warning(e)
+    except Exception:
         return False
 
 
