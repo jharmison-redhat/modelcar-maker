@@ -20,6 +20,8 @@ def should_include(file: str | Path) -> bool:
         return False
     if file == "Containerfile":
         return False
+    if file == "original":
+        return False
     return True
 
 
