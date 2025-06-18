@@ -66,16 +66,18 @@ def _image(model: str, repo: str) -> str:
     return f"{repo}:{tag}"
 
 
-def do_build(model: str, repo: str, model_dir: Path) -> None:
+def do_build(model: str, repo: str, model_dir: Path) -> str:
+    image = _image(model, repo)
     podman(
         "build",
         args=[
             "-t",
-            _image(model, repo),
+            image,
         ],
         context_dir=model_dir,
         printer=rprint,
     )
+    return image
 
 
 def do_push(model: str, repo: str, authfile: Path | None) -> None:

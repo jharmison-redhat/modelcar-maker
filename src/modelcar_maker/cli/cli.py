@@ -111,7 +111,7 @@ def build(
         models = [model]
 
     for model in models:
-        process(
+        result = process(
             str(model),
             image_repo,
             authfile=authfile,
@@ -119,3 +119,13 @@ def build(
             cleanup=cleanup,
             skip_if_exists=skip_if_exists,
         )
+        if result.skipped:
+            rprint(f"{model} was skipped as it already exists at {image_repo}.")
+        if result.image_cleaned_up:
+            rprint(
+                f"{model} was downloaded to {result.downloaded_to}, built as {result.image}, pushed, and then cleaned up."
+            )
+        elif result.image_pushed:
+            rprint(f"{model} was downloaded to {result.downloaded_to}, built as {result.image}, and pushed.")
+        elif result.image_built:
+            rprint(f"{model} was downloaded to {result.downloaded_to} and built as {result.image}, but not pushed.")
