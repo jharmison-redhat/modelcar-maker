@@ -22,6 +22,8 @@ def should_include(file: str | Path) -> bool:
         return False
     if file == "original":
         return False
+    if file == "consolidated.safetensors":
+        return False
     return True
 
 
