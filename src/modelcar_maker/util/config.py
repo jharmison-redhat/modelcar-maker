@@ -30,4 +30,5 @@ else:
         settings_files=[default_config],
         load_dotenv=True,
         includes=include_configs,
+        merge_enabled=True,
     )

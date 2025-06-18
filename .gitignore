@@ -11,3 +11,6 @@ dist
 # Preserve Containerfiles, even if not other files
 models/*/*
 !models/*/Containerfile
+
+# Keep a local config for myself
+config.toml
