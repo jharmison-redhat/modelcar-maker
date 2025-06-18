@@ -13,6 +13,7 @@ warnings.filterwarnings("ignore", category=TqdmExperimentalWarning)
 
 
 def hf_download(repo_id: str) -> Path:
+    """Download the given model repo_id into the models/ directory, returning the path."""
     normalized = normalize(repo_id)
     download_dir = Path(f"models/{normalized}")
     logger.info(f"Downloading {repo_id} to {download_dir}")

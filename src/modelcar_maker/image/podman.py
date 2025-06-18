@@ -28,6 +28,7 @@ def podman(
     args: list[Any] = [],
     printer: Callable = print,
 ) -> str:
+    """Performs generic podman commands with flexible handling of the output."""
     argv = [
         "podman",
         command,
@@ -62,11 +63,14 @@ def podman(
 
 
 def _image(model: str, repo: str) -> str:
+    """Given a model repo id an container image repository, render the full image name."""
     tag = normalize(model) + "-modelcar"
     return f"{repo}:{tag}"
 
 
 def do_build(model: str, repo: str, model_dir: Path) -> str:
+    """Perform a podman build of the given model, for the given
+    image registry repo, from the files in the model_dir."""
     image = _image(model, repo)
     podman(
         "build",
@@ -81,6 +85,8 @@ def do_build(model: str, repo: str, model_dir: Path) -> str:
 
 
 def do_push(model: str, repo: str, authfile: Path | None) -> None:
+    """Perform a podman push of the image that matches the given model,
+    image registry repo, and optionally use the specified authfile."""
     args = list()
     if authfile is not None:
         args.extend(["--authfile", str(authfile)])
@@ -89,6 +95,8 @@ def do_push(model: str, repo: str, authfile: Path | None) -> None:
 
 
 def do_image_rm(model: str, repo: str) -> bool:
+    """Remove the image for the given model and image registry repo from the local podman image
+    cache. Returns True when successful, False when failed - often because the image doesn't exist."""
     try:
         podman(
             "image",
@@ -104,6 +112,8 @@ def do_image_rm(model: str, repo: str) -> bool:
 
 
 def image_exists(model: str, repo: str) -> bool:
+    """Return whether the image for the given model and
+    image registry repo exists at the remote repository."""
     raw_json = podman(
         "search",
         args=[repo, "--list-tags", "--format", "json", "--limit", "1000"],

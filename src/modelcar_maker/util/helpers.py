@@ -1,4 +1,5 @@
 def normalize(repo_id: str) -> str:
+    """Normalizes a model repository ID to be something suitable for a folder or image tag."""
     return repo_id.replace("/", "--").replace(".", "_").lower()
 
 

@@ -4,7 +4,7 @@ from jinja2 import Environment
 from jinja2 import PackageLoader
 from jinja2 import select_autoescape
 
-from ..download import normalize
+from ..util import normalize
 
 env = Environment(loader=PackageLoader("modelcar_maker"), autoescape=select_autoescape())
 
@@ -12,6 +12,7 @@ template = env.get_template("Containerfile.j2")
 
 
 def should_include(file: str | Path) -> bool:
+    """Simple filter function to determine if a file should be included in an image definition."""
     if isinstance(file, Path):
         file = file.name
 
@@ -23,6 +24,7 @@ def should_include(file: str | Path) -> bool:
 
 
 def render(repo_id: str, model_dir: Path) -> None:
+    """Renders out the Containerfile.j2 template with the files in model_dir."""
     model_files = [file.name for file in model_dir.iterdir() if should_include(file)]
     modelcard_source = ""
     for file in model_files:

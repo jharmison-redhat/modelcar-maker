@@ -9,6 +9,7 @@ cleanup = false
 skip_if_exists = true
 
 [models]
+cleanup = false
 default = [
     "RedHatAI/granite-3.1-8b-instruct-quantized.w8a8",
     "ibm-granite/granite-3.2-8b-instruct",

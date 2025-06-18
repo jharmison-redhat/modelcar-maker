@@ -61,13 +61,20 @@ def build(
             help="The authfile to use for the podman push",
         ),
     ] = settings.image.get("authfile"),
-    cleanup: Annotated[
+    image_cleanup: Annotated[
         bool,
         typer.Option(
-            "--clean-up/--no-clean-up",
-            help="Clean up the container images after push to free up space",
+            "--image-clean-up/--no-image-clean-up",
+            help="Clean up the container image after push to free up space",
         ),
     ] = settings.image.cleanup,
+    model_cleanup: Annotated[
+        bool,
+        typer.Option(
+            "--model-clean-up/--no-model-clean-up",
+            help="Clean up the downloaded model images after build to free up space",
+        ),
+    ] = settings.models.cleanup,
     skip_if_exists: Annotated[
         bool,
         typer.Option(
@@ -98,7 +105,7 @@ def build(
         ),
     ] = False,
 ):
-    """Modelcar Maker model download, build, and (optionally) push"""
+    """Modelcar Maker model download, build, and push"""
 
     logger = make_logger(verbose)
     image_repo = f"{registry}/{repository}"
@@ -116,19 +123,19 @@ def build(
             image_repo,
             authfile=authfile,
             push=push,
-            cleanup=cleanup,
+            image_cleanup=image_cleanup,
+            model_cleanup=model_cleanup,
             skip_if_exists=skip_if_exists,
         )
+        cleanup_str = f"Cleanup: {'✅' if result.image_cleaned_up else '❌'} Image, {'✅' if result.model_cleaned_up else '❌'} Model"
+
         if result.skipped:
-            if result.image_cleaned_up:
-                rprint(f"{model} was skipped as it already exists at {image_repo} (but it was cleaned up locally).")
-            else:
-                rprint(f"{model} was skipped as it already exists at {image_repo}.")
-        if result.image_cleaned_up:
+            rprint(f"{model} was skipped as it already exists at {image_repo} - {cleanup_str}.")
+        if result.image_pushed:
             rprint(
-                f"{model} was downloaded to {result.downloaded_to}, built as {result.image}, pushed, and then cleaned up."
+                f"{model} was downloaded to {result.downloaded_to}, built as {result.image}, and pushed - {cleanup_str}."
             )
-        elif result.image_pushed:
-            rprint(f"{model} was downloaded to {result.downloaded_to}, built as {result.image}, and pushed.")
         elif result.image_built:
-            rprint(f"{model} was downloaded to {result.downloaded_to} and built as {result.image}, but not pushed.")
+            rprint(
+                f"{model} was downloaded to {result.downloaded_to} and built as {result.image}, but not pushed - {cleanup_str}."
+            )
