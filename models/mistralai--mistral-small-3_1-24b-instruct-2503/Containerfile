@@ -3,15 +3,15 @@ ARG MODEL=mistralai/Mistral-Small-3.1-24B-Instruct-2503 \
     NAME=mistralai--mistral-small-3_1-24b-instruct-2503 \
     REF=main
 
-COPY config.json /models/
-COPY README.md /models/
-COPY SYSTEM_PROMPT.txt /models/
-COPY generation_config.json /models/
 COPY chat_template.json /models/
-COPY model-00007-of-00010.safetensors /models/
-COPY model-00005-of-00010.safetensors /models/
+COPY config.json /models/
+COPY SYSTEM_PROMPT.txt /models/
+COPY README.md /models/
+COPY generation_config.json /models/
+COPY model-00002-of-00010.safetensors /models/
+COPY model-00006-of-00010.safetensors /models/
 COPY model-00009-of-00010.safetensors /models/
-COPY model-00010-of-00010.safetensors /models/
+COPY model-00007-of-00010.safetensors /models/
 COPY model.safetensors.index.json /models/
 COPY params.json /models/
 COPY preprocessor_config.json /models/
@@ -20,21 +20,20 @@ COPY special_tokens_map.json /models/
 COPY tekken.json /models/
 COPY tokenizer.json /models/
 COPY tokenizer_config.json /models/
-COPY model-00008-of-00010.safetensors /models/
-COPY model-00006-of-00010.safetensors /models/
 COPY model-00003-of-00010.safetensors /models/
-COPY model-00001-of-00010.safetensors /models/
+COPY model-00010-of-00010.safetensors /models/
 COPY model-00004-of-00010.safetensors /models/
-COPY model-00002-of-00010.safetensors /models/
-COPY consolidated.safetensors /models/
+COPY model-00008-of-00010.safetensors /models/
+COPY model-00005-of-00010.safetensors /models/
+COPY model-00001-of-00010.safetensors /models/
 
 COPY README.md /modelcard.md
 
 LABEL \
     name=${NAME}-modelcar \
     io.k8s.display-name=${NAME}-modelcar \
-    description="A very small RHEL image which contains ${MODEL} downloaded to /models" \
-    io.k8s.description="A very small RHEL image which contains ${MODEL} downloaded to /models" \
+    description="A very small RHEL image which contains the contents of huggingface.co/${MODEL} downloaded to /models" \
+    io.k8s.description="A very small RHEL image which contains the contents of huggingface.co/${MODEL} downloaded to /models" \
     maintainer="James Harmison <jharmiso@redhat.com>" \
     release=1 \
     summary="${MODEL} model car image" \

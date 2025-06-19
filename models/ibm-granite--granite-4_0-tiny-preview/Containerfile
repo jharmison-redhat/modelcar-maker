@@ -5,9 +5,9 @@ ARG MODEL=ibm-granite/granite-4.0-tiny-preview \
 
 COPY generation_config.json /models/
 COPY README.md /models/
+COPY special_tokens_map.json /models/
 COPY config.json /models/
 COPY model.safetensors.index.json /models/
-COPY special_tokens_map.json /models/
 COPY tokenizer_config.json /models/
 COPY tokenizer.json /models/
 COPY model-00003-of-00003.safetensors /models/
@@ -19,8 +19,8 @@ COPY README.md /modelcard.md
 LABEL \
     name=${NAME}-modelcar \
     io.k8s.display-name=${NAME}-modelcar \
-    description="A very small RHEL image which contains ${MODEL} downloaded to /models" \
-    io.k8s.description="A very small RHEL image which contains ${MODEL} downloaded to /models" \
+    description="A very small RHEL image which contains the contents of huggingface.co/${MODEL} downloaded to /models" \
+    io.k8s.description="A very small RHEL image which contains the contents of huggingface.co/${MODEL} downloaded to /models" \
     maintainer="James Harmison <jharmiso@redhat.com>" \
     release=1 \
     summary="${MODEL} model car image" \

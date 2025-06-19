@@ -5,13 +5,13 @@ ARG MODEL=RedHatAI/granite-3.1-8b-instruct-quantized.w8a8 \
 
 COPY README.md /models/
 COPY generation_config.json /models/
-COPY added_tokens.json /models/
-COPY config.json /models/
 COPY merges.txt /models/
-COPY recipe.yaml /models/
+COPY added_tokens.json /models/
 COPY model.safetensors.index.json /models/
+COPY recipe.yaml /models/
 COPY special_tokens_map.json /models/
 COPY tokenizer_config.json /models/
+COPY config.json /models/
 COPY vocab.json /models/
 COPY tokenizer.json /models/
 COPY model-00002-of-00002.safetensors /models/
@@ -22,8 +22,8 @@ COPY README.md /modelcard.md
 LABEL \
     name=${NAME}-modelcar \
     io.k8s.display-name=${NAME}-modelcar \
-    description="A very small RHEL image which contains ${MODEL} downloaded to /models" \
-    io.k8s.description="A very small RHEL image which contains ${MODEL} downloaded to /models" \
+    description="A very small RHEL image which contains the contents of huggingface.co/${MODEL} downloaded to /models" \
+    io.k8s.description="A very small RHEL image which contains the contents of huggingface.co/${MODEL} downloaded to /models" \
     maintainer="James Harmison <jharmiso@redhat.com>" \
     release=1 \
     summary="${MODEL} model car image" \

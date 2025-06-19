@@ -3,11 +3,11 @@ ARG MODEL=RedHatAI/Llama-3.2-3B-Instruct-FP8 \
     NAME=redhatai--llama-3_2-3b-instruct-fp8 \
     REF=main
 
+COPY generation_config.json /models/
 COPY special_tokens_map.json /models/
+COPY recipe.yaml /models/
 COPY README.md /models/
 COPY config.json /models/
-COPY generation_config.json /models/
-COPY recipe.yaml /models/
 COPY tokenizer_config.json /models/
 COPY tokenizer.json /models/
 COPY model.safetensors /models/
@@ -17,8 +17,8 @@ COPY README.md /modelcard.md
 LABEL \
     name=${NAME}-modelcar \
     io.k8s.display-name=${NAME}-modelcar \
-    description="A very small RHEL image which contains ${MODEL} downloaded to /models" \
-    io.k8s.description="A very small RHEL image which contains ${MODEL} downloaded to /models" \
+    description="A very small RHEL image which contains the contents of huggingface.co/${MODEL} downloaded to /models" \
+    io.k8s.description="A very small RHEL image which contains the contents of huggingface.co/${MODEL} downloaded to /models" \
     maintainer="James Harmison <jharmiso@redhat.com>" \
     release=1 \
     summary="${MODEL} model car image" \

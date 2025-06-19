@@ -4,17 +4,17 @@ ARG MODEL=Qwen/Qwen3-8B \
     REF=main
 
 COPY config.json /models/
-COPY generation_config.json /models/
 COPY README.md /models/
-COPY merges.txt /models/
 COPY model.safetensors.index.json /models/
+COPY generation_config.json /models/
+COPY merges.txt /models/
 COPY tokenizer_config.json /models/
 COPY vocab.json /models/
 COPY tokenizer.json /models/
 COPY model-00005-of-00005.safetensors /models/
-COPY model-00002-of-00005.safetensors /models/
 COPY model-00004-of-00005.safetensors /models/
 COPY model-00001-of-00005.safetensors /models/
+COPY model-00002-of-00005.safetensors /models/
 COPY model-00003-of-00005.safetensors /models/
 
 COPY README.md /modelcard.md
@@ -22,8 +22,8 @@ COPY README.md /modelcard.md
 LABEL \
     name=${NAME}-modelcar \
     io.k8s.display-name=${NAME}-modelcar \
-    description="A very small RHEL image which contains ${MODEL} downloaded to /models" \
-    io.k8s.description="A very small RHEL image which contains ${MODEL} downloaded to /models" \
+    description="A very small RHEL image which contains the contents of huggingface.co/${MODEL} downloaded to /models" \
+    io.k8s.description="A very small RHEL image which contains the contents of huggingface.co/${MODEL} downloaded to /models" \
     maintainer="James Harmison <jharmiso@redhat.com>" \
     release=1 \
     summary="${MODEL} model car image" \
