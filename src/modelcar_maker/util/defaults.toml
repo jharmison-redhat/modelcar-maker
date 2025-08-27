@@ -29,4 +29,5 @@ default = [
     "intfloat/multilingual-e5-large-instruct",
     "intfloat/multilingual-e5-large",
     "BAAI/bge-m3",
+    "ibm-granite/granite-8b-code-instruct-128k",
 ]
