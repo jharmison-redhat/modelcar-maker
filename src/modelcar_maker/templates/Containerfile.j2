@@ -1,7 +1,5 @@
 FROM registry.access.redhat.com/ubi9/ubi-minimal:latest
-ARG MODEL={{ model }} \
-    NAME={{ normalized }} \
-    REF=main
+
 {% for model_file in model_files %}
 COPY {{ model_file }} /models/
 {%- endfor %}
@@ -10,12 +8,12 @@ COPY {{ modelcard_source }} /modelcard.md
 {%- endif %}
 
 LABEL \
-    name=${NAME}-modelcar \
-    io.k8s.display-name=${NAME}-modelcar \
-    description="A very small RHEL image which contains the contents of huggingface.co/${MODEL} downloaded to /models" \
-    io.k8s.description="A very small RHEL image which contains the contents of huggingface.co/${MODEL} downloaded to /models" \
+    name={{ normalized }}-modelcar \
+    io.k8s.display-name={{ normalized }}-modelcar \
+    description="A very small RHEL image which contains the contents of huggingface.co/{{ model }} downloaded to /models" \
+    io.k8s.description="A very small RHEL image which contains the contents of huggingface.co/{{ model }} downloaded to /models" \
     maintainer="James Harmison <jharmiso@redhat.com>" \
     release=1 \
-    summary="${MODEL} model car image" \
+    summary="{{ model }} model car image" \
     url="https://github.com/jharmison-redhat/modelcar-maker" \
-    vcs-ref="${REF}"
+    model.commit="{{ commit }}"

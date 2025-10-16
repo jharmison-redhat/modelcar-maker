@@ -27,7 +27,7 @@ def should_include(file: str | Path) -> bool:
     return True
 
 
-def render(repo_id: str, model_dir: Path) -> None:
+def render(repo_id: str, model_dir: Path, commit: str) -> None:
     """Renders out the Containerfile.j2 template with the files in model_dir."""
     model_files = [file.name for file in model_dir.iterdir() if should_include(file)]
     modelcard_source = ""
@@ -43,5 +43,6 @@ def render(repo_id: str, model_dir: Path) -> None:
                 normalized=normalize(repo_id),
                 model_files=model_files,
                 modelcard_source=modelcard_source,
+                commit=commit,
             )
         )

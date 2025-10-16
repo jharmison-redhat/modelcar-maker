@@ -67,11 +67,11 @@ def process(
             return result
 
     # Ensure that the model is downloaded before the build
-    download_dir = hf_download(model)
+    download_dir, commit = hf_download(model)
     result.downloaded_to = download_dir
 
     # Ensure that the rendered Containerfile is up to date
-    render(model, download_dir)
+    render(model, download_dir, commit)
     # Rerun the podman build
     result.image = do_build(model, image_repo, download_dir)
     result.image_built = True
