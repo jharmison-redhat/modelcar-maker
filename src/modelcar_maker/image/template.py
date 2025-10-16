@@ -30,6 +30,7 @@ def should_include(file: str | Path) -> bool:
 def render(repo_id: str, model_dir: Path, commit: str) -> None:
     """Renders out the Containerfile.j2 template with the files in model_dir."""
     model_files = [file.name for file in model_dir.iterdir() if should_include(file)]
+    model_files.sort()
     modelcard_source = ""
     for file in model_files:
         if file.startswith("README"):
