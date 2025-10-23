@@ -29,6 +29,7 @@ default = [
     "RedHatAI/Voxtral-Mini-3B-2507-FP8-dynamic",
     "RedHatAI/gpt-oss-120b",
     "RedHatAI/gpt-oss-20b",
+    "RedHatAI/granite-3.1-8b-instruct-FP8-dynamic",
     "RedHatAI/granite-3.1-8b-instruct-quantized.w8a8",
     "ibm-granite/granite-3.2-8b-instruct",
     "ibm-granite/granite-3.3-8b-instruct",
