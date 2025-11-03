@@ -1,31 +1,30 @@
 FROM registry.access.redhat.com/ubi9/ubi-minimal:latest
-ARG MODEL=intfloat/multilingual-e5-large \
-    NAME=intfloat--multilingual-e5-large \
-    REF=main
+
 
 COPY 1_Pooling /models/
-COPY onnx /models/
-COPY config.json /models/
-COPY modules.json /models/
 COPY README.md /models/
+COPY config.json /models/
+COPY model.safetensors /models/
+COPY modules.json /models/
+COPY onnx /models/
 COPY openvino /models/
+COPY pytorch_model.bin /models/
 COPY sentence_bert_config.json /models/
 COPY sentencepiece.bpe.model /models/
 COPY special_tokens_map.json /models/
-COPY tokenizer_config.json /models/
 COPY tokenizer.json /models/
-COPY model.safetensors /models/
-COPY pytorch_model.bin /models/
+COPY tokenizer_config.json /models/
 
 COPY README.md /modelcard.md
 
 LABEL \
-    name=${NAME}-modelcar \
-    io.k8s.display-name=${NAME}-modelcar \
-    description="A very small RHEL image which contains the contents of huggingface.co/${MODEL} downloaded to /models" \
-    io.k8s.description="A very small RHEL image which contains the contents of huggingface.co/${MODEL} downloaded to /models" \
+    name=intfloat--multilingual-e5-large-modelcar \
+    io.k8s.display-name=intfloat--multilingual-e5-large-modelcar \
+    description="A very small RHEL image which contains the contents of huggingface.co/intfloat/multilingual-e5-large downloaded to /models" \
+    io.k8s.description="A very small RHEL image which contains the contents of huggingface.co/intfloat/multilingual-e5-large downloaded to /models" \
     maintainer="James Harmison <jharmiso@redhat.com>" \
     release=1 \
-    summary="${MODEL} model car image" \
+    summary="intfloat/multilingual-e5-large model car image" \
     url="https://github.com/jharmison-redhat/modelcar-maker" \
-    vcs-ref="${REF}"
+    model.name="intfloat/multilingual-e5-large" \
+    model.commit="0dc5580a448e4284468b8909bae50fa925907bc5"

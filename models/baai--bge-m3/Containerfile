@@ -1,34 +1,33 @@
 FROM registry.access.redhat.com/ubi9/ubi-minimal:latest
-ARG MODEL=BAAI/bge-m3 \
-    NAME=baai--bge-m3 \
-    REF=main
+
 
 COPY 1_Pooling /models/
-COPY imgs /models/
-COPY config.json /models/
 COPY README.md /models/
-COPY config_sentence_transformers.json /models/
-COPY onnx /models/
-COPY modules.json /models/
-COPY long.jpg /models/
 COPY colbert_linear.pt /models/
+COPY config.json /models/
+COPY config_sentence_transformers.json /models/
+COPY imgs /models/
+COPY long.jpg /models/
+COPY modules.json /models/
+COPY onnx /models/
+COPY pytorch_model.bin /models/
 COPY sentence_bert_config.json /models/
+COPY sentencepiece.bpe.model /models/
 COPY sparse_linear.pt /models/
 COPY special_tokens_map.json /models/
-COPY tokenizer_config.json /models/
-COPY sentencepiece.bpe.model /models/
 COPY tokenizer.json /models/
-COPY pytorch_model.bin /models/
+COPY tokenizer_config.json /models/
 
 COPY README.md /modelcard.md
 
 LABEL \
-    name=${NAME}-modelcar \
-    io.k8s.display-name=${NAME}-modelcar \
-    description="A very small RHEL image which contains the contents of huggingface.co/${MODEL} downloaded to /models" \
-    io.k8s.description="A very small RHEL image which contains the contents of huggingface.co/${MODEL} downloaded to /models" \
+    name=baai--bge-m3-modelcar \
+    io.k8s.display-name=baai--bge-m3-modelcar \
+    description="A very small RHEL image which contains the contents of huggingface.co/BAAI/bge-m3 downloaded to /models" \
+    io.k8s.description="A very small RHEL image which contains the contents of huggingface.co/BAAI/bge-m3 downloaded to /models" \
     maintainer="James Harmison <jharmiso@redhat.com>" \
     release=1 \
-    summary="${MODEL} model car image" \
+    summary="BAAI/bge-m3 model car image" \
     url="https://github.com/jharmison-redhat/modelcar-maker" \
-    vcs-ref="${REF}"
+    model.name="BAAI/bge-m3" \
+    model.commit="5617a9f61b028005a4858fdac845db406aefb181"

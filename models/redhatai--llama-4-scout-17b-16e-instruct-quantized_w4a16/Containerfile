@@ -1,0 +1,43 @@
+FROM registry.access.redhat.com/ubi9/ubi-minimal:latest
+
+
+COPY README.md /models/
+COPY chat_template.json /models/
+COPY config.json /models/
+COPY generation_config.json /models/
+COPY model-00001-of-00014.safetensors /models/
+COPY model-00002-of-00014.safetensors /models/
+COPY model-00003-of-00014.safetensors /models/
+COPY model-00004-of-00014.safetensors /models/
+COPY model-00005-of-00014.safetensors /models/
+COPY model-00006-of-00014.safetensors /models/
+COPY model-00007-of-00014.safetensors /models/
+COPY model-00008-of-00014.safetensors /models/
+COPY model-00009-of-00014.safetensors /models/
+COPY model-00010-of-00014.safetensors /models/
+COPY model-00011-of-00014.safetensors /models/
+COPY model-00012-of-00014.safetensors /models/
+COPY model-00013-of-00014.safetensors /models/
+COPY model-00014-of-00014.safetensors /models/
+COPY model.safetensors.index.json /models/
+COPY preprocessor_config.json /models/
+COPY processor_config.json /models/
+COPY recipe.yaml /models/
+COPY special_tokens_map.json /models/
+COPY tokenizer.json /models/
+COPY tokenizer.model /models/
+COPY tokenizer_config.json /models/
+
+COPY README.md /modelcard.md
+
+LABEL \
+    name=redhatai--llama-4-scout-17b-16e-instruct-quantized_w4a16-modelcar \
+    io.k8s.display-name=redhatai--llama-4-scout-17b-16e-instruct-quantized_w4a16-modelcar \
+    description="A very small RHEL image which contains the contents of huggingface.co/RedHatAI/Llama-4-Scout-17B-16E-Instruct-quantized.w4a16 downloaded to /models" \
+    io.k8s.description="A very small RHEL image which contains the contents of huggingface.co/RedHatAI/Llama-4-Scout-17B-16E-Instruct-quantized.w4a16 downloaded to /models" \
+    maintainer="James Harmison <jharmiso@redhat.com>" \
+    release=1 \
+    summary="RedHatAI/Llama-4-Scout-17B-16E-Instruct-quantized.w4a16 model car image" \
+    url="https://github.com/jharmison-redhat/modelcar-maker" \
+    model.name="RedHatAI/Llama-4-Scout-17B-16E-Instruct-quantized.w4a16" \
+    model.commit="d96eb9e573cd8a91c5fb04f5ca7441d02844b45e"

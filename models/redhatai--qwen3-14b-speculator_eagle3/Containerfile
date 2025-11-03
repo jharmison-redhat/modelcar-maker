@@ -1,0 +1,23 @@
+FROM registry.access.redhat.com/ubi9/ubi-minimal:latest
+ARG MODEL=RedHatAI/Qwen3-14B-speculator.eagle3 \
+    NAME=redhatai--qwen3-14b-speculator_eagle3 \
+    REF=main
+
+COPY README.md /models/
+COPY eagle3.py /models/
+COPY generation_config.json /models/
+COPY config.json /models/
+COPY model.safetensors /models/
+
+COPY README.md /modelcard.md
+
+LABEL \
+    name=${NAME}-modelcar \
+    io.k8s.display-name=${NAME}-modelcar \
+    description="A very small RHEL image which contains the contents of huggingface.co/${MODEL} downloaded to /models" \
+    io.k8s.description="A very small RHEL image which contains the contents of huggingface.co/${MODEL} downloaded to /models" \
+    maintainer="James Harmison <jharmiso@redhat.com>" \
+    release=1 \
+    summary="${MODEL} model car image" \
+    url="https://github.com/jharmison-redhat/modelcar-maker" \
+    vcs-ref="${REF}"

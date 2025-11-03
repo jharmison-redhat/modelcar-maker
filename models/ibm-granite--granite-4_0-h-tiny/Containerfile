@@ -1,0 +1,31 @@
+FROM registry.access.redhat.com/ubi9/ubi-minimal:latest
+
+
+COPY README.md /models/
+COPY chat_template.jinja /models/
+COPY config.json /models/
+COPY generation_config.json /models/
+COPY merges.txt /models/
+COPY model-00001-of-00003.safetensors /models/
+COPY model-00002-of-00003.safetensors /models/
+COPY model-00003-of-00003.safetensors /models/
+COPY model.safetensors.index.json /models/
+COPY model.sig /models/
+COPY special_tokens_map.json /models/
+COPY tokenizer.json /models/
+COPY tokenizer_config.json /models/
+COPY vocab.json /models/
+
+COPY README.md /modelcard.md
+
+LABEL \
+    name=ibm-granite--granite-4_0-h-tiny-modelcar \
+    io.k8s.display-name=ibm-granite--granite-4_0-h-tiny-modelcar \
+    description="A very small RHEL image which contains the contents of huggingface.co/ibm-granite/granite-4.0-h-tiny downloaded to /models" \
+    io.k8s.description="A very small RHEL image which contains the contents of huggingface.co/ibm-granite/granite-4.0-h-tiny downloaded to /models" \
+    maintainer="James Harmison <jharmiso@redhat.com>" \
+    release=1 \
+    summary="ibm-granite/granite-4.0-h-tiny model car image" \
+    url="https://github.com/jharmison-redhat/modelcar-maker" \
+    model.name="ibm-granite/granite-4.0-h-tiny" \
+    model.commit="bd583fd142b138de853315f24591c745013942fe"

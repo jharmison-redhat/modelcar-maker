@@ -1,0 +1,28 @@
+FROM registry.access.redhat.com/ubi9/ubi-minimal:latest
+
+
+COPY README.md /models/
+COPY config.json /models/
+COPY generation_config.json /models/
+COPY model-00001-of-00004.safetensors /models/
+COPY model-00002-of-00004.safetensors /models/
+COPY model-00003-of-00004.safetensors /models/
+COPY model-00004-of-00004.safetensors /models/
+COPY model.safetensors.index.json /models/
+COPY special_tokens_map.json /models/
+COPY tokenizer.json /models/
+COPY tokenizer_config.json /models/
+
+COPY README.md /modelcard.md
+
+LABEL \
+    name=ibm-granite--granite-8b-code-instruct-128k-modelcar \
+    io.k8s.display-name=ibm-granite--granite-8b-code-instruct-128k-modelcar \
+    description="A very small RHEL image which contains the contents of huggingface.co/ibm-granite/granite-8b-code-instruct-128k downloaded to /models" \
+    io.k8s.description="A very small RHEL image which contains the contents of huggingface.co/ibm-granite/granite-8b-code-instruct-128k downloaded to /models" \
+    maintainer="James Harmison <jharmiso@redhat.com>" \
+    release=1 \
+    summary="ibm-granite/granite-8b-code-instruct-128k model car image" \
+    url="https://github.com/jharmison-redhat/modelcar-maker" \
+    model.name="ibm-granite/granite-8b-code-instruct-128k" \
+    model.commit="51b1ae377aacb1feff44a06d225021423e109ffe"

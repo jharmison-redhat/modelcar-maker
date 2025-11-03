@@ -1,17 +1,21 @@
 FROM registry.access.redhat.com/ubi9/ubi-minimal:latest
-ARG MODEL=mistralai/Mistral-Small-3.1-24B-Instruct-2503 \
-    NAME=mistralai--mistral-small-3_1-24b-instruct-2503 \
-    REF=main
 
+
+COPY README.md /models/
+COPY SYSTEM_PROMPT.txt /models/
 COPY chat_template.json /models/
 COPY config.json /models/
-COPY SYSTEM_PROMPT.txt /models/
-COPY README.md /models/
 COPY generation_config.json /models/
+COPY model-00001-of-00010.safetensors /models/
 COPY model-00002-of-00010.safetensors /models/
+COPY model-00003-of-00010.safetensors /models/
+COPY model-00004-of-00010.safetensors /models/
+COPY model-00005-of-00010.safetensors /models/
 COPY model-00006-of-00010.safetensors /models/
-COPY model-00009-of-00010.safetensors /models/
 COPY model-00007-of-00010.safetensors /models/
+COPY model-00008-of-00010.safetensors /models/
+COPY model-00009-of-00010.safetensors /models/
+COPY model-00010-of-00010.safetensors /models/
 COPY model.safetensors.index.json /models/
 COPY params.json /models/
 COPY preprocessor_config.json /models/
@@ -20,22 +24,17 @@ COPY special_tokens_map.json /models/
 COPY tekken.json /models/
 COPY tokenizer.json /models/
 COPY tokenizer_config.json /models/
-COPY model-00003-of-00010.safetensors /models/
-COPY model-00010-of-00010.safetensors /models/
-COPY model-00004-of-00010.safetensors /models/
-COPY model-00008-of-00010.safetensors /models/
-COPY model-00005-of-00010.safetensors /models/
-COPY model-00001-of-00010.safetensors /models/
 
 COPY README.md /modelcard.md
 
 LABEL \
-    name=${NAME}-modelcar \
-    io.k8s.display-name=${NAME}-modelcar \
-    description="A very small RHEL image which contains the contents of huggingface.co/${MODEL} downloaded to /models" \
-    io.k8s.description="A very small RHEL image which contains the contents of huggingface.co/${MODEL} downloaded to /models" \
+    name=mistralai--mistral-small-3_1-24b-instruct-2503-modelcar \
+    io.k8s.display-name=mistralai--mistral-small-3_1-24b-instruct-2503-modelcar \
+    description="A very small RHEL image which contains the contents of huggingface.co/mistralai/Mistral-Small-3.1-24B-Instruct-2503 downloaded to /models" \
+    io.k8s.description="A very small RHEL image which contains the contents of huggingface.co/mistralai/Mistral-Small-3.1-24B-Instruct-2503 downloaded to /models" \
     maintainer="James Harmison <jharmiso@redhat.com>" \
     release=1 \
-    summary="${MODEL} model car image" \
+    summary="mistralai/Mistral-Small-3.1-24B-Instruct-2503 model car image" \
     url="https://github.com/jharmison-redhat/modelcar-maker" \
-    vcs-ref="${REF}"
+    model.name="mistralai/Mistral-Small-3.1-24B-Instruct-2503" \
+    model.commit="22953e37fd6c3aa0523c6a5891ff52444baad3e0"

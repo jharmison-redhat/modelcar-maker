@@ -1,0 +1,30 @@
+FROM registry.access.redhat.com/ubi9/ubi-minimal:latest
+
+
+COPY LICENSE /models/
+COPY README.md /models/
+COPY USE_POLICY.md /models/
+COPY config.json /models/
+COPY generation_config.json /models/
+COPY model-00001-of-00004.safetensors /models/
+COPY model-00002-of-00004.safetensors /models/
+COPY model-00003-of-00004.safetensors /models/
+COPY model-00004-of-00004.safetensors /models/
+COPY model.safetensors.index.json /models/
+COPY special_tokens_map.json /models/
+COPY tokenizer.json /models/
+COPY tokenizer_config.json /models/
+
+COPY README.md /modelcard.md
+
+LABEL \
+    name=meta-llama--llama-3_1-8b-instruct-modelcar \
+    io.k8s.display-name=meta-llama--llama-3_1-8b-instruct-modelcar \
+    description="A very small RHEL image which contains the contents of huggingface.co/meta-llama/Llama-3.1-8B-Instruct downloaded to /models" \
+    io.k8s.description="A very small RHEL image which contains the contents of huggingface.co/meta-llama/Llama-3.1-8B-Instruct downloaded to /models" \
+    maintainer="James Harmison <jharmiso@redhat.com>" \
+    release=1 \
+    summary="meta-llama/Llama-3.1-8B-Instruct model car image" \
+    url="https://github.com/jharmison-redhat/modelcar-maker" \
+    model.name="meta-llama/Llama-3.1-8B-Instruct" \
+    model.commit="0e9e39f249a16976918f6564b8830bc894c89659"

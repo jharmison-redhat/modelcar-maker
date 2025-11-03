@@ -1,0 +1,30 @@
+FROM registry.access.redhat.com/ubi9/ubi-minimal:latest
+
+
+COPY README.md /models/
+COPY chat_template.jinja /models/
+COPY config.json /models/
+COPY generation_config.json /models/
+COPY merges.txt /models/
+COPY model-00001-of-00002.safetensors /models/
+COPY model-00002-of-00002.safetensors /models/
+COPY model.safetensors.index.json /models/
+COPY model.sig /models/
+COPY special_tokens_map.json /models/
+COPY tokenizer.json /models/
+COPY tokenizer_config.json /models/
+COPY vocab.json /models/
+
+COPY README.md /modelcard.md
+
+LABEL \
+    name=ibm-granite--granite-4_0-micro-modelcar \
+    io.k8s.display-name=ibm-granite--granite-4_0-micro-modelcar \
+    description="A very small RHEL image which contains the contents of huggingface.co/ibm-granite/granite-4.0-micro downloaded to /models" \
+    io.k8s.description="A very small RHEL image which contains the contents of huggingface.co/ibm-granite/granite-4.0-micro downloaded to /models" \
+    maintainer="James Harmison <jharmiso@redhat.com>" \
+    release=1 \
+    summary="ibm-granite/granite-4.0-micro model car image" \
+    url="https://github.com/jharmison-redhat/modelcar-maker" \
+    model.name="ibm-granite/granite-4.0-micro" \
+    model.commit="111f8049e9fce173f9e0db6de78b726cdfdd74d1"
