@@ -1,0 +1,37 @@
+FROM registry.access.redhat.com/ubi9/ubi-minimal:latest
+
+
+COPY README.md /models/
+COPY acc-vs-budget.png /models/
+COPY accuracy_chart.png /models/
+COPY bias.md /models/
+COPY config.json /models/
+COPY configuration_nemotron_h.py /models/
+COPY explainability.md /models/
+COPY generation_config.json /models/
+COPY model-00001-of-00004.safetensors /models/
+COPY model-00002-of-00004.safetensors /models/
+COPY model-00003-of-00004.safetensors /models/
+COPY model-00004-of-00004.safetensors /models/
+COPY model.safetensors.index.json /models/
+COPY modeling_nemotron_h.py /models/
+COPY nemotron_toolcall_parser_no_streaming.py /models/
+COPY privacy.md /models/
+COPY safety.md /models/
+COPY special_tokens_map.json /models/
+COPY tokenizer.json /models/
+COPY tokenizer_config.json /models/
+
+COPY README.md /modelcard.md
+
+LABEL \
+    name=nvidia--nvidia-nemotron-nano-9b-v2-modelcar \
+    io.k8s.display-name=nvidia--nvidia-nemotron-nano-9b-v2-modelcar \
+    description="A very small RHEL image which contains the contents of huggingface.co/nvidia/NVIDIA-Nemotron-Nano-9B-v2 downloaded to /models" \
+    io.k8s.description="A very small RHEL image which contains the contents of huggingface.co/nvidia/NVIDIA-Nemotron-Nano-9B-v2 downloaded to /models" \
+    maintainer="James Harmison <jharmiso@redhat.com>" \
+    release=1 \
+    summary="nvidia/NVIDIA-Nemotron-Nano-9B-v2 model car image" \
+    url="https://github.com/jharmison-redhat/modelcar-maker" \
+    model.name="nvidia/NVIDIA-Nemotron-Nano-9B-v2" \
+    model.commit="d97784d459657815f24514cc6d5f282689847a4f"

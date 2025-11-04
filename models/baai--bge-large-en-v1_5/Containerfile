@@ -1,0 +1,30 @@
+FROM registry.access.redhat.com/ubi9/ubi-minimal:latest
+
+
+COPY 1_Pooling /models/
+COPY README.md /models/
+COPY config.json /models/
+COPY config_sentence_transformers.json /models/
+COPY model.safetensors /models/
+COPY modules.json /models/
+COPY onnx /models/
+COPY pytorch_model.bin /models/
+COPY sentence_bert_config.json /models/
+COPY special_tokens_map.json /models/
+COPY tokenizer.json /models/
+COPY tokenizer_config.json /models/
+COPY vocab.txt /models/
+
+COPY README.md /modelcard.md
+
+LABEL \
+    name=baai--bge-large-en-v1_5-modelcar \
+    io.k8s.display-name=baai--bge-large-en-v1_5-modelcar \
+    description="A very small RHEL image which contains the contents of huggingface.co/BAAI/bge-large-en-v1.5 downloaded to /models" \
+    io.k8s.description="A very small RHEL image which contains the contents of huggingface.co/BAAI/bge-large-en-v1.5 downloaded to /models" \
+    maintainer="James Harmison <jharmiso@redhat.com>" \
+    release=1 \
+    summary="BAAI/bge-large-en-v1.5 model car image" \
+    url="https://github.com/jharmison-redhat/modelcar-maker" \
+    model.name="BAAI/bge-large-en-v1.5" \
+    model.commit="d4aa6901d3a41ba39fb536a557fa166f842b0e09"

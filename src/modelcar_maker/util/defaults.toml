@@ -11,6 +11,7 @@ skip_if_exists = true
 [models]
 cleanup = false
 default = [
+    "BAAI/bge-large-en-v1.5",
     "BAAI/bge-m3",
     "Qwen/Qwen3-14B",
     "Qwen/Qwen3-14B-FP8",
