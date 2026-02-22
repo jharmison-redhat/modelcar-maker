@@ -1,0 +1,54 @@
+FROM registry.access.redhat.com/ubi9/ubi-minimal:latest
+
+
+COPY README.md /models/
+COPY bias.md /models/
+COPY chat_template.jinja /models/
+COPY config.json /models/
+COPY configuration_nemotron_h.py /models/
+COPY explainability.md /models/
+COPY generation_config.json /models/
+COPY hf_quant_config.json /models/
+COPY model-00001-of-00010.json /models/
+COPY model-00001-of-00010.safetensors /models/
+COPY model-00002-of-00010.json /models/
+COPY model-00002-of-00010.safetensors /models/
+COPY model-00003-of-00010.json /models/
+COPY model-00003-of-00010.safetensors /models/
+COPY model-00004-of-00010.json /models/
+COPY model-00004-of-00010.safetensors /models/
+COPY model-00005-of-00010.json /models/
+COPY model-00005-of-00010.safetensors /models/
+COPY model-00006-of-00010.json /models/
+COPY model-00006-of-00010.safetensors /models/
+COPY model-00007-of-00010.json /models/
+COPY model-00007-of-00010.safetensors /models/
+COPY model-00008-of-00010.json /models/
+COPY model-00008-of-00010.safetensors /models/
+COPY model-00009-of-00010.json /models/
+COPY model-00009-of-00010.safetensors /models/
+COPY model-00010-of-00010.json /models/
+COPY model-00010-of-00010.safetensors /models/
+COPY model.safetensors.index.json /models/
+COPY modeling_nemotron_h.py /models/
+COPY nano_v3_reasoning_parser.py /models/
+COPY nemo-evaluator-launcher-configs /models/
+COPY privacy.md /models/
+COPY safety.md /models/
+COPY special_tokens_map.json /models/
+COPY tokenizer.json /models/
+COPY tokenizer_config.json /models/
+
+COPY README.md /modelcard.md
+
+LABEL \
+    name=redhatai--nvidia-nemotron-3-nano-30b-a3b-fp8-modelcar \
+    io.k8s.display-name=redhatai--nvidia-nemotron-3-nano-30b-a3b-fp8-modelcar \
+    description="A very small RHEL image which contains the contents of huggingface.co/RedHatAI/NVIDIA-Nemotron-3-Nano-30B-A3B-FP8 downloaded to /models" \
+    io.k8s.description="A very small RHEL image which contains the contents of huggingface.co/RedHatAI/NVIDIA-Nemotron-3-Nano-30B-A3B-FP8 downloaded to /models" \
+    maintainer="James Harmison <jharmiso@redhat.com>" \
+    release=1 \
+    summary="RedHatAI/NVIDIA-Nemotron-3-Nano-30B-A3B-FP8 model car image" \
+    url="https://github.com/jharmison-redhat/modelcar-maker" \
+    model.name="RedHatAI/NVIDIA-Nemotron-3-Nano-30B-A3B-FP8" \
+    model.commit="2372f0ca4aa4ba4e3b19600e63ce222b676ea028"

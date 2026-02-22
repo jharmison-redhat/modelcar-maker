@@ -1,0 +1,32 @@
+FROM registry.access.redhat.com/ubi9/ubi-minimal:latest
+
+
+COPY README.md /models/
+COPY SYSTEM_PROMPT.txt /models/
+COPY chat_template.jinja /models/
+COPY config.json /models/
+COPY generation_config.json /models/
+COPY model-00001-of-00004.safetensors /models/
+COPY model-00002-of-00004.safetensors /models/
+COPY model-00003-of-00004.safetensors /models/
+COPY model-00004-of-00004.safetensors /models/
+COPY model.safetensors.index.json /models/
+COPY params.json /models/
+COPY processor_config.json /models/
+COPY tekken.json /models/
+COPY tokenizer.json /models/
+COPY tokenizer_config.json /models/
+
+COPY README.md /modelcard.md
+
+LABEL \
+    name=redhatai--ministral-3-14b-instruct-2512-modelcar \
+    io.k8s.display-name=redhatai--ministral-3-14b-instruct-2512-modelcar \
+    description="A very small RHEL image which contains the contents of huggingface.co/RedHatAI/Ministral-3-14B-Instruct-2512 downloaded to /models" \
+    io.k8s.description="A very small RHEL image which contains the contents of huggingface.co/RedHatAI/Ministral-3-14B-Instruct-2512 downloaded to /models" \
+    maintainer="James Harmison <jharmiso@redhat.com>" \
+    release=1 \
+    summary="RedHatAI/Ministral-3-14B-Instruct-2512 model car image" \
+    url="https://github.com/jharmison-redhat/modelcar-maker" \
+    model.name="RedHatAI/Ministral-3-14B-Instruct-2512" \
+    model.commit="3f6355ace517bef486e42ee1fbbcada70f1573c5"
