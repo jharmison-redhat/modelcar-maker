@@ -1,0 +1,30 @@
+FROM registry.access.redhat.com/ubi9/ubi-minimal:latest
+
+
+COPY LICENSE /models/
+COPY README.md /models/
+COPY config.json /models/
+COPY generation_config.json /models/
+COPY merges.txt /models/
+COPY model-00001-of-00004.safetensors /models/
+COPY model-00002-of-00004.safetensors /models/
+COPY model-00003-of-00004.safetensors /models/
+COPY model-00004-of-00004.safetensors /models/
+COPY model.safetensors.index.json /models/
+COPY tokenizer.json /models/
+COPY tokenizer_config.json /models/
+COPY vocab.json /models/
+
+COPY README.md /modelcard.md
+
+LABEL \
+    name=qwen--qwen3-30b-a3b-instruct-2507-fp8-modelcar \
+    io.k8s.display-name=qwen--qwen3-30b-a3b-instruct-2507-fp8-modelcar \
+    description="A very small RHEL image which contains the contents of huggingface.co/Qwen/Qwen3-30B-A3B-Instruct-2507-FP8 downloaded to /models" \
+    io.k8s.description="A very small RHEL image which contains the contents of huggingface.co/Qwen/Qwen3-30B-A3B-Instruct-2507-FP8 downloaded to /models" \
+    maintainer="James Harmison <jharmiso@redhat.com>" \
+    release=1 \
+    summary="Qwen/Qwen3-30B-A3B-Instruct-2507-FP8 model car image" \
+    url="https://github.com/jharmison-redhat/modelcar-maker" \
+    model.name="Qwen/Qwen3-30B-A3B-Instruct-2507-FP8" \
+    model.commit="5a5a776300a41aaa681dd7ff0106608ef2bc90db"
