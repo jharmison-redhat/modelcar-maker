@@ -1,0 +1,38 @@
+FROM registry.access.redhat.com/ubi9/ubi-minimal:latest
+
+
+COPY README.md /models/
+COPY added_tokens.json /models/
+COPY chat_template.jinja /models/
+COPY config.json /models/
+COPY generation_config.json /models/
+COPY merges.txt /models/
+COPY model-00001-of-00009.safetensors /models/
+COPY model-00002-of-00009.safetensors /models/
+COPY model-00003-of-00009.safetensors /models/
+COPY model-00004-of-00009.safetensors /models/
+COPY model-00005-of-00009.safetensors /models/
+COPY model-00006-of-00009.safetensors /models/
+COPY model-00007-of-00009.safetensors /models/
+COPY model-00008-of-00009.safetensors /models/
+COPY model-00009-of-00009.safetensors /models/
+COPY model.safetensors.index.json /models/
+COPY recipe.yaml /models/
+COPY special_tokens_map.json /models/
+COPY tokenizer.json /models/
+COPY tokenizer_config.json /models/
+COPY vocab.json /models/
+
+COPY README.md /modelcard.md
+
+LABEL \
+    name=redhatai--qwen3-next-80b-a3b-instruct-quantized_w4a16-modelcar \
+    io.k8s.display-name=redhatai--qwen3-next-80b-a3b-instruct-quantized_w4a16-modelcar \
+    description="A very small RHEL image which contains the contents of huggingface.co/RedHatAI/Qwen3-Next-80B-A3B-Instruct-quantized.w4a16 downloaded to /models" \
+    io.k8s.description="A very small RHEL image which contains the contents of huggingface.co/RedHatAI/Qwen3-Next-80B-A3B-Instruct-quantized.w4a16 downloaded to /models" \
+    maintainer="James Harmison <jharmiso@redhat.com>" \
+    release=1 \
+    summary="RedHatAI/Qwen3-Next-80B-A3B-Instruct-quantized.w4a16 model car image" \
+    url="https://github.com/jharmison-redhat/modelcar-maker" \
+    model.name="RedHatAI/Qwen3-Next-80B-A3B-Instruct-quantized.w4a16" \
+    model.commit="c6aa7285c8329447456bd5daa3941cf0335be53a"
