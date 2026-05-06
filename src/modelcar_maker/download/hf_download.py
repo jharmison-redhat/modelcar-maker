@@ -25,14 +25,17 @@ def hf_download(repo_id: str) -> tuple[Path, str]:
 
     cache_dir = download_dir.joinpath(".cache").joinpath("huggingface").joinpath("download")
     commit = None
-    for _, _, files in cache_dir.walk():
+    for root, _, files in cache_dir.walk():
         for file in files:
             if file.endswith(".metadata"):
-                metadata_file = cache_dir.joinpath(file)
+                metadata_file = Path(root).joinpath(file)
                 with open(metadata_file) as f:
                     commit = list(f.readlines())[0].strip()
             if commit is not None:
                 break
 
     assert commit is not None
-    return (download_dir, commit,)
+    return (
+        download_dir,
+        commit,
+    )
