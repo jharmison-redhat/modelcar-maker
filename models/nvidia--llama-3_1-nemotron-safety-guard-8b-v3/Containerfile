@@ -1,0 +1,30 @@
+FROM registry.access.redhat.com/ubi9/ubi-minimal:latest
+
+
+COPY README.md /models/
+COPY config.json /models/
+COPY generation_config.json /models/
+COPY inference_script.py /models/
+COPY lora_adapter /models/
+COPY model-00001-of-00004.safetensors /models/
+COPY model-00002-of-00004.safetensors /models/
+COPY model-00003-of-00004.safetensors /models/
+COPY model-00004-of-00004.safetensors /models/
+COPY model.safetensors.index.json /models/
+COPY special_tokens_map.json /models/
+COPY tokenizer.json /models/
+COPY tokenizer_config.json /models/
+
+COPY README.md /modelcard.md
+
+LABEL \
+    name=nvidia--llama-3_1-nemotron-safety-guard-8b-v3-modelcar \
+    io.k8s.display-name=nvidia--llama-3_1-nemotron-safety-guard-8b-v3-modelcar \
+    description="A very small RHEL image which contains the contents of huggingface.co/nvidia/Llama-3.1-Nemotron-Safety-Guard-8B-v3 downloaded to /models" \
+    io.k8s.description="A very small RHEL image which contains the contents of huggingface.co/nvidia/Llama-3.1-Nemotron-Safety-Guard-8B-v3 downloaded to /models" \
+    maintainer="James Harmison <jharmiso@redhat.com>" \
+    release=1 \
+    summary="nvidia/Llama-3.1-Nemotron-Safety-Guard-8B-v3 model car image" \
+    url="https://github.com/jharmison-redhat/modelcar-maker" \
+    model.name="nvidia/Llama-3.1-Nemotron-Safety-Guard-8B-v3" \
+    model.commit="8fdc246ba3d56db9c469d534233b9f582d3afafa"
