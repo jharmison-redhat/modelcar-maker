@@ -13,5 +13,9 @@ uv.lock
 models/*/*
 !models/*/Containerfile
 
+# working directory
+tmp/*
+!tmp/.gitkeep
+
 # Keep a local config for myself
 config.toml
