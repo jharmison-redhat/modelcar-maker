@@ -6,6 +6,7 @@ from rich import print as rprint
 from typing_extensions import Annotated
 
 from .. import process
+from ..image.types import Backend
 from ..util import make_logger
 from ..util import settings
 
@@ -46,6 +47,20 @@ def build(
             help="The repository, within the registry, to include in the image reference",
         ),
     ] = settings.image.repository,
+    backend: Annotated[
+        Backend,
+        typer.Option(
+            "--backend",
+            help="Build backend to use: podman (default) or olot",
+        ),
+    ] = Backend(settings.image.backend),
+    base_image: Annotated[
+        str,
+        typer.Option(
+            "--base-image",
+            help="Base image to use for the modelcar (applies to both backends)",
+        ),
+    ] = settings.image.base_image,
     push: Annotated[
         bool,
         typer.Option(
@@ -58,7 +73,7 @@ def build(
         typer.Option(
             "-a",
             "--authfile",
-            help="The authfile to use for the podman push",
+            help="The authfile to use for the push",
         ),
     ] = settings.image.get("authfile"),
     image_cleanup: Annotated[
@@ -109,7 +124,7 @@ def build(
 
     logger = make_logger(verbose)
     image_repo = f"{registry}/{repository}"
-    logger.debug(f"Push {image_repo}: {push}")
+    logger.debug(f"Backend: {backend}, Push {image_repo}: {push}")
     if model is None:
         if not isinstance(settings.models.default, list):
             raise RuntimeError(f"Default models should be a list, not {type(settings.models.default)}")
@@ -121,6 +136,8 @@ def build(
         result = process(
             str(model),
             image_repo,
+            backend=backend,
+            base_image=base_image,
             authfile=authfile,
             push=push,
             image_cleanup=image_cleanup,

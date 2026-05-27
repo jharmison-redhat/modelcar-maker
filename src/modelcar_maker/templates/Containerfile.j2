@@ -1,4 +1,4 @@
-FROM registry.access.redhat.com/ubi9/ubi-minimal:latest
+FROM {{ base_image }}
 
 {% for model_file in model_files %}
 COPY {{ model_file }} /models/

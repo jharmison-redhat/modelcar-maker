@@ -9,6 +9,9 @@ from modelcar_maker.image.podman import do_image_rm
 from modelcar_maker.image.podman import do_push
 from modelcar_maker.image.podman import image_exists
 from modelcar_maker.image.podman import podman
+from modelcar_maker.image.types import BuildArgs
+from modelcar_maker.image.types import PushArgs
+from modelcar_maker.image.types import RmArgs
 
 
 class TestPodmanGeneric:
@@ -40,29 +43,39 @@ class TestPodmanGeneric:
         assert out == "line1\nline2"
 
 
+BASE_IMAGE = "registry.access.redhat.com/ubi9/ubi-minimal:latest"
+
+
 class TestDoBuild:
     def test_calls_podman_build_with_tag(self, mock_popen, tmp_path):
-        do_build("MyOrg/Model", "quay.io/repo", tmp_path)
+        args = BuildArgs(
+            model="MyOrg/Model",
+            repo="quay.io/repo",
+            model_dir=tmp_path,
+            base_image=BASE_IMAGE,
+            commit="abc123",
+        )
+        result = do_build(args)
         m, _ = mock_popen
         argv = m.call_args[0][0]
         assert argv == ["podman", "build", ".", "-t", "quay.io/repo:myorg--model-modelcar"]
         assert m.call_args[1]["cwd"] == tmp_path
-
-    def test_returns_image_name(self, mock_popen, tmp_path):
-        result = do_build("MyOrg/Model", "quay.io/repo", tmp_path)
-        assert result == "quay.io/repo:myorg--model-modelcar"
+        assert result.image == "quay.io/repo:myorg--model-modelcar"
+        assert result.oci_layout_dir is None
 
 
 class TestDoPush:
     def test_push_without_authfile(self, mock_popen):
-        do_push("MyOrg/Model", "quay.io/repo", None)
+        args = PushArgs(model="MyOrg/Model", repo="quay.io/repo", authfile=None)
+        do_push(args)
         m, _ = mock_popen
         argv = m.call_args[0][0]
         assert argv == ["podman", "push", "quay.io/repo:myorg--model-modelcar"]
 
     def test_push_with_authfile(self, mock_popen):
         auth = Path("/secrets/auth.json")
-        do_push("MyOrg/Model", "quay.io/repo", auth)
+        args = PushArgs(model="MyOrg/Model", repo="quay.io/repo", authfile=auth)
+        do_push(args)
         m, _ = mock_popen
         argv = m.call_args[0][0]
         assert "--authfile" in argv
@@ -71,7 +84,8 @@ class TestDoPush:
 
 class TestDoImageRm:
     def test_removes_image(self, mock_popen):
-        result = do_image_rm("MyOrg/Model", "quay.io/repo")
+        args = RmArgs(model="MyOrg/Model", repo="quay.io/repo")
+        result = do_image_rm(args)
         m, _ = mock_popen
         argv = m.call_args[0][0]
         assert argv == ["podman", "image", "rm", "quay.io/repo:myorg--model-modelcar"]
@@ -80,7 +94,8 @@ class TestDoImageRm:
     def test_returns_false_on_failure(self, mock_popen):
         _, proc = mock_popen
         proc.wait.return_value = 1
-        result = do_image_rm("MyOrg/Model", "quay.io/repo")
+        args = RmArgs(model="MyOrg/Model", repo="quay.io/repo")
+        result = do_image_rm(args)
         assert result is False
 
 

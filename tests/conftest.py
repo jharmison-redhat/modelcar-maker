@@ -56,3 +56,15 @@ def image_search_json_missing():
             }
         ]
     )
+
+
+def pytest_collection_modifyitems(config, items):
+    """Skip slow tests by default unless a -m marker expression is explicitly given."""
+    option_markexpr = getattr(config.option, "markexpr", None)
+    if option_markexpr:
+        return
+
+    skip_slow = pytest.mark.skip(reason="slow test: use -m 'slow or not slow' to run")
+    for item in items:
+        if "slow" in item.keywords:
+            item.add_marker(skip_slow)

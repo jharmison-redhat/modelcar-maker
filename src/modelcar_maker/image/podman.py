@@ -9,6 +9,12 @@ from rich import print as rprint
 
 from ..util import logger
 from ..util import normalize
+from .common import _image
+from .template import render
+from .types import BuildArgs
+from .types import BuildResult
+from .types import PushArgs
+from .types import RmArgs
 
 
 def _utf8ify(line_bytes: bytes | str | None = None) -> str:
@@ -62,39 +68,34 @@ def podman(
     return "\n".join(output)
 
 
-def _image(model: str, repo: str) -> str:
-    """Given a model repo id an container image repository, render the full image name."""
-    tag = normalize(model) + "-modelcar"
-    return f"{repo}:{tag}"
-
-
-def do_build(model: str, repo: str, model_dir: Path) -> str:
+def do_build(args: BuildArgs) -> BuildResult:
     """Perform a podman build of the given model, for the given
     image registry repo, from the files in the model_dir."""
-    image = _image(model, repo)
+    image = _image(args.model, args.repo)
+    render(args.model, args.model_dir, args.commit, args.base_image)
     podman(
         "build",
         args=[
             "-t",
             image,
         ],
-        context_dir=model_dir,
+        context_dir=args.model_dir,
         printer=rprint,
     )
-    return image
+    return BuildResult(image=image)
 
 
-def do_push(model: str, repo: str, authfile: Path | None) -> None:
+def do_push(args: PushArgs) -> None:
     """Perform a podman push of the image that matches the given model,
     image registry repo, and optionally use the specified authfile."""
-    args = list()
-    if authfile is not None:
-        args.extend(["--authfile", str(authfile)])
-    args.append(_image(model, repo))
-    podman("push", args=args)
+    cmd_args = list()
+    if args.authfile is not None:
+        cmd_args.extend(["--authfile", str(args.authfile)])
+    cmd_args.append(_image(args.model, args.repo))
+    podman("push", args=cmd_args)
 
 
-def do_image_rm(model: str, repo: str) -> bool:
+def do_image_rm(args: RmArgs) -> bool:
     """Remove the image for the given model and image registry repo from the local podman image
     cache. Returns True when successful, False when failed - often because the image doesn't exist."""
     try:
@@ -102,7 +103,7 @@ def do_image_rm(model: str, repo: str) -> bool:
             "image",
             args=[
                 "rm",
-                _image(model, repo),
+                _image(args.model, args.repo),
             ],
             printer=logger.info,
         )

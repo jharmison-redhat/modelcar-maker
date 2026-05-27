@@ -4,6 +4,8 @@ verbosity = 0
 [image]
 registry = "quay.io"
 repository = "jharmison/models"
+base_image = "registry.access.redhat.com/ubi10/ubi-micro:10.2"
+backend = "podman"
 push = true
 cleanup = false
 skip_if_exists = true

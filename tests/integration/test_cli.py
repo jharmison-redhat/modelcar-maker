@@ -1,8 +1,10 @@
 from unittest.mock import patch
 
+import pytest
 from typer.testing import CliRunner
 
 from modelcar_maker.cli.cli import cli
+from modelcar_maker.image.types import Backend
 
 runner = CliRunner()
 
@@ -28,6 +30,8 @@ class TestBuildCommand:
             image_cleanup=False,
             model_cleanup=False,
             skip_if_exists=True,
+            backend=Backend.PODMAN,
+            base_image="registry.access.redhat.com/ubi10/ubi-micro:10.2",
         )
 
     @patch("modelcar_maker.cli.cli.process")
@@ -76,6 +80,12 @@ class TestBuildCommand:
         assert result.exit_code == 0
         _, kwargs = mock_process.call_args
         assert str(kwargs["authfile"]) == "/auth.json"
+
+    @patch("modelcar_maker.cli.cli.process")
+    def test_invalid_backend(self, mock_process):
+        result = runner.invoke(cli, ["MyOrg/MyModel", "--backend", "docker"])
+        assert result.exit_code != 0
+        mock_process.assert_not_called()
 
     @patch("modelcar_maker.cli.cli.process")
     def test_skip_if_exists(self, mock_process):

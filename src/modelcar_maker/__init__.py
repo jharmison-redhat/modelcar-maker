@@ -3,11 +3,7 @@ from pathlib import Path
 from typing import Optional
 
 from .download import hf_download
-from .image import do_build
-from .image import do_image_rm
-from .image import do_push
-from .image import image_exists
-from .image import render
+from .image.types import Backend
 from .util import normalize
 from .util import settings
 
@@ -44,6 +40,8 @@ def cleanup(path: Path, skip: list[str] = ["Containerfile"]) -> bool:
 def process(
     model: str,
     image_repo: str = f"{settings.image.registry}/{settings.image.repository}",
+    backend: Backend | str = settings.image.backend,
+    base_image: str = settings.image.base_image,
     authfile: Path | None = settings.image.get("authfile"),
     push: bool = settings.image.push,
     image_cleanup: bool = settings.image.cleanup,
@@ -53,13 +51,35 @@ def process(
     """Run through the entire process of downloading, packaging, and publishing a Model Car image."""
     result = ProcessResult()
 
+    if isinstance(backend, str):
+        try:
+            backend = Backend(backend)
+        except ValueError:
+            raise NotImplementedError(f"Backend {backend!r} is not supported") from None
+
+    from .image.types import BuildArgs
+    from .image.types import PushArgs
+    from .image.types import RmArgs
+
+    if backend is Backend.PODMAN:
+        from .image.podman import do_build
+        from .image.podman import do_image_rm
+        from .image.podman import do_push
+        from .image.podman import image_exists
+    else:
+        from .image.olot import do_build
+        from .image.olot import do_image_rm
+        from .image.olot import do_push
+        from .image.olot import image_exists
+
     if skip_if_exists:
         if image_exists(model, image_repo):
             # It was requested that we skip the build, and the image exists.
             # We should still check if a cleanup is called for.
             result.skipped = True
             if image_cleanup:
-                if do_image_rm(model, image_repo):
+                oci_layout_dir = Path("tmp").joinpath(normalize(model)) if backend is not Backend.PODMAN else None
+                if do_image_rm(RmArgs(model=model, repo=image_repo, oci_layout_dir=oci_layout_dir)):
                     result.image_cleaned_up = True
             if model_cleanup:
                 download_dir = Path("models").joinpath(normalize(model))
@@ -70,20 +90,50 @@ def process(
     download_dir, commit = hf_download(model)
     result.downloaded_to = download_dir
 
-    # Ensure that the rendered Containerfile is up to date
-    render(model, download_dir, commit)
-    # Rerun the podman build
-    result.image = do_build(model, image_repo, download_dir)
+    # Build the image
+    build_result = do_build(
+        BuildArgs(
+            model=model,
+            repo=image_repo,
+            model_dir=download_dir,
+            base_image=base_image,
+            commit=commit,
+        )
+    )
+    result.image = build_result.image
     result.image_built = True
 
     if push:
-        do_push(model, image_repo, authfile)
+        do_push(
+            PushArgs(
+                model=model,
+                repo=image_repo,
+                authfile=authfile,
+                oci_layout_dir=build_result.oci_layout_dir,
+            )
+        )
         result.image_pushed = True
 
-    if image_cleanup and image_exists(model, image_repo):
-        # Only clean up the image if it was pushed
-        if do_image_rm(model, image_repo):
-            result.image_cleaned_up = True
+    if image_cleanup:
+        if backend is Backend.PODMAN:
+            if image_exists(model, image_repo):
+                if do_image_rm(
+                    RmArgs(
+                        model=model,
+                        repo=image_repo,
+                        oci_layout_dir=build_result.oci_layout_dir,
+                    )
+                ):
+                    result.image_cleaned_up = True
+        else:
+            if do_image_rm(
+                RmArgs(
+                    model=model,
+                    repo=image_repo,
+                    oci_layout_dir=build_result.oci_layout_dir,
+                )
+            ):
+                result.image_cleaned_up = True
 
     if model_cleanup and result.image_built:
         # Only clean up the files if it was skipped (above) or an image definitely got built

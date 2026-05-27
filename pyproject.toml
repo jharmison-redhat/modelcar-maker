@@ -17,6 +17,7 @@ dependencies = [
     "typer >=0.16.0,<0.17",
     "huggingface-hub >=0.33.0,<0.34",
     "Jinja2 >=3.1.6,<3.2",
+    "olot[oras-py] >=0.1.17,<0.2.0",
 ]
 
 [project.optional-dependencies]
@@ -49,6 +50,11 @@ profile = "black"
 force_single_line = true
 line_length = 120
 src_paths = ["src", "tests"]
+
+[tool.pytest.ini_options]
+markers = [
+    "slow: marks tests as slow (deselect with -m 'not slow')",
+]
 
 [tool.pyright]
 venvPath = "."

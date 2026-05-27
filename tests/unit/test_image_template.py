@@ -2,8 +2,8 @@ from pathlib import Path
 
 import pytest
 
+from modelcar_maker.image.common import should_include
 from modelcar_maker.image.template import render
-from modelcar_maker.image.template import should_include
 
 
 class TestShouldInclude:
@@ -29,17 +29,20 @@ class TestShouldInclude:
         assert should_include(Path(".hidden")) is False
 
 
+BASE_IMAGE = "registry.access.redhat.com/ubi9/ubi-minimal:latest"
+
+
 class TestRender:
     def test_creates_containerfile(self, tmp_model_dir):
-        render("TestOrg/TestModel", tmp_model_dir, "abc123")
+        render("TestOrg/TestModel", tmp_model_dir, "abc123", BASE_IMAGE)
         containerfile = tmp_model_dir / "Containerfile"
         assert containerfile.exists()
 
     def test_content_has_expected_elements(self, tmp_model_dir):
-        render("TestOrg/TestModel", tmp_model_dir, "abc123")
+        render("TestOrg/TestModel", tmp_model_dir, "abc123", BASE_IMAGE)
         text = (tmp_model_dir / "Containerfile").read_text()
 
-        assert "FROM registry.access.redhat.com/ubi9/ubi-minimal:latest" in text
+        assert f"FROM {BASE_IMAGE}" in text
         assert "COPY config.json /models/" in text
         assert "COPY model.safetensors /models/" in text
         assert "COPY README.md /modelcard.md" in text
@@ -51,13 +54,13 @@ class TestRender:
         # Add more files to verify lexicographic ordering
         (tmp_model_dir / "z_last.bin").write_text("")
         (tmp_model_dir / "a_first.bin").write_text("")
-        render("TestOrg/TestModel", tmp_model_dir, "abc123")
+        render("TestOrg/TestModel", tmp_model_dir, "abc123", BASE_IMAGE)
         text = (tmp_model_dir / "Containerfile").read_text()
         # a_first should come before z_last
         assert text.index("a_first") < text.index("z_last")
 
     def test_no_extraneous_files_copied(self, tmp_model_dir):
-        render("TestOrg/TestModel", tmp_model_dir, "abc123")
+        render("TestOrg/TestModel", tmp_model_dir, "abc123", BASE_IMAGE)
         text = (tmp_model_dir / "Containerfile").read_text()
         assert ".hidden" not in text
         assert "Containerfile" not in text
@@ -68,12 +71,12 @@ class TestRender:
         # Remove README and add a different one
         (tmp_model_dir / "README.md").unlink()
         (tmp_model_dir / "README.rst").write_text("")
-        render("TestOrg/TestModel", tmp_model_dir, "abc123")
+        render("TestOrg/TestModel", tmp_model_dir, "abc123", BASE_IMAGE)
         text = (tmp_model_dir / "Containerfile").read_text()
         assert "COPY README.rst /modelcard.md" in text
 
     def test_no_modelcard_when_no_readme(self, tmp_model_dir):
         (tmp_model_dir / "README.md").unlink()
-        render("TestOrg/TestModel", tmp_model_dir, "abc123")
+        render("TestOrg/TestModel", tmp_model_dir, "abc123", BASE_IMAGE)
         text = (tmp_model_dir / "Containerfile").read_text()
         assert "/modelcard.md" not in text
