@@ -1,3 +1,4 @@
+import hashlib
 import os
 import shutil
 from pathlib import Path
@@ -14,6 +15,21 @@ from .types import PushArgs
 from .types import RmArgs
 
 
+def _base_image_cache_key(base_image: str) -> str:
+    """Return a short, safe directory name for caching a base image OCI layout."""
+    return hashlib.sha256(base_image.encode()).hexdigest()[:16]
+
+
+def _copy_cached_layout(cache_dir: Path, dest_dir: Path) -> None:
+    """Copy the contents of a cached OCI layout directory into a fresh model layout directory."""
+    for item in cache_dir.iterdir():
+        dest = dest_dir / item.name
+        if item.is_dir():
+            shutil.copytree(item, dest)
+        else:
+            shutil.copy2(item, dest)
+
+
 def _authfile_env(authfile: Path | None) -> dict[str, str] | None:
     """Return an env dict with DOCKER_CONFIG set to the parent dir of authfile, if provided."""
     if authfile is None:
@@ -27,8 +43,8 @@ def _authfile_env(authfile: Path | None) -> dict[str, str] | None:
 def do_build(args: BuildArgs) -> BuildResult:
     """Build an OCI image for the given model using olot.
 
-    Pulls the base image into an OCI layout, then adds model files as layers.
-    Returns the full image reference and the OCI layout directory path.
+    Reuses a cached base image OCI layout when available to avoid
+    re-downloading the same base image for every model build.
     """
     from olot.backend.oras_py import oras_py_pull
     from olot.basics import oci_layers_on_top
@@ -36,14 +52,23 @@ def do_build(args: BuildArgs) -> BuildResult:
     normalized = normalize(args.model)
     oci_layout_dir = Path("tmp").joinpath(normalized)
 
-    # Ensure a clean OCI layout directory before pulling the base image
+    # Ensure a clean OCI layout directory for this model build
     if oci_layout_dir.exists():
         shutil.rmtree(oci_layout_dir)
     oci_layout_dir.mkdir(parents=True, exist_ok=True)
 
-    logger.info(f"Pulling base image {args.base_image} into {oci_layout_dir}")
-    rprint(f"Pulling base image {args.base_image} into {oci_layout_dir}")
-    oras_py_pull(args.base_image, oci_layout_dir)
+    # Cache directory for the base image, keyed by the exact image ref
+    cache_dir = Path("tmp").joinpath(".base-image-cache", _base_image_cache_key(args.base_image))
+    if cache_dir.exists():
+        logger.info(f"Reusing cached base image {args.base_image} from {cache_dir}")
+        rprint(f"Reusing cached base image {args.base_image}")
+        _copy_cached_layout(cache_dir, oci_layout_dir)
+    else:
+        logger.info(f"Pulling base image {args.base_image} into {oci_layout_dir}")
+        rprint(f"Pulling base image {args.base_image} into {oci_layout_dir}")
+        oras_py_pull(args.base_image, oci_layout_dir)
+        cache_dir.mkdir(parents=True, exist_ok=True)
+        _copy_cached_layout(oci_layout_dir, cache_dir)
 
     model_files, modelcard_source = list_model_files(args.model_dir)
     if not model_files:
