@@ -54,11 +54,29 @@ class TestDoBuild:
             model_dir=tmp_path,
             base_image=BASE_IMAGE,
             commit="abc123",
+            pull=False,
         )
         result = do_build(args)
         m, _ = mock_popen
         argv = m.call_args[0][0]
         assert argv == ["podman", "build", ".", "-t", "quay.io/repo:myorg--model-modelcar"]
+        assert m.call_args[1]["cwd"] == tmp_path
+        assert result.image == "quay.io/repo:myorg--model-modelcar"
+        assert result.oci_layout_dir is None
+
+    def test_calls_podman_build_with_pull_newer(self, mock_popen, tmp_path):
+        args = BuildArgs(
+            model="MyOrg/Model",
+            repo="quay.io/repo",
+            model_dir=tmp_path,
+            base_image=BASE_IMAGE,
+            commit="abc123",
+            pull=True,
+        )
+        result = do_build(args)
+        m, _ = mock_popen
+        argv = m.call_args[0][0]
+        assert argv == ["podman", "build", ".", "--pull=newer", "-t", "quay.io/repo:myorg--model-modelcar"]
         assert m.call_args[1]["cwd"] == tmp_path
         assert result.image == "quay.io/repo:myorg--model-modelcar"
         assert result.oci_layout_dir is None

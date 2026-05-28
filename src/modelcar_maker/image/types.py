@@ -20,6 +20,7 @@ class BuildArgs:
     model_dir: Path
     base_image: str
     commit: str
+    pull: bool = True
 
 
 @dataclass

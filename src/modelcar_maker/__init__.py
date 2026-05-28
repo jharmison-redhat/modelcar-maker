@@ -47,6 +47,7 @@ def process(
     image_cleanup: bool = settings.image.cleanup,
     model_cleanup: bool = settings.models.cleanup,
     skip_if_exists: bool = settings.image.skip_if_exists,
+    pull: bool = settings.image.pull,
 ) -> ProcessResult:
     """Run through the entire process of downloading, packaging, and publishing a Model Car image."""
     result = ProcessResult()
@@ -98,6 +99,7 @@ def process(
             model_dir=download_dir,
             base_image=base_image,
             commit=commit,
+            pull=pull,
         )
     )
     result.image = build_result.image

@@ -32,6 +32,7 @@ class TestBuildCommand:
             skip_if_exists=True,
             backend=Backend.PODMAN,
             base_image="registry.access.redhat.com/ubi10/ubi-micro:10.2",
+            pull=True,
         )
 
     @patch("modelcar_maker.cli.cli.process")

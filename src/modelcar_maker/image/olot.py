@@ -1,6 +1,8 @@
 import hashlib
+import json
 import os
 import shutil
+import subprocess
 from pathlib import Path
 
 from rich import print as rprint
@@ -30,6 +32,28 @@ def _copy_cached_layout(cache_dir: Path, dest_dir: Path) -> None:
             shutil.copy2(item, dest)
 
 
+def _remote_manifest_digest(base_image: str) -> str:
+    """Fetch the raw manifest from the remote registry and return its sha256 digest."""
+    raw = subprocess.run(
+        ["skopeo", "inspect", "--raw", f"docker://{base_image}"],
+        capture_output=True,
+        check=True,
+    ).stdout
+    return "sha256:" + hashlib.sha256(raw).hexdigest()
+
+
+def _cached_manifest_digest(cache_dir: Path) -> str | None:
+    """Read the digest of the first manifest in a cached OCI layout's index.json."""
+    idx = cache_dir / "index.json"
+    if not idx.exists():
+        return None
+    data = json.loads(idx.read_text())
+    manifests = data.get("manifests", [])
+    if manifests:
+        return manifests[0].get("digest")
+    return None
+
+
 def _authfile_env(authfile: Path | None) -> dict[str, str] | None:
     """Return an env dict with DOCKER_CONFIG set to the parent dir of authfile, if provided."""
     if authfile is None:
@@ -43,8 +67,8 @@ def _authfile_env(authfile: Path | None) -> dict[str, str] | None:
 def do_build(args: BuildArgs) -> BuildResult:
     """Build an OCI image for the given model using olot.
 
-    Reuses a cached base image OCI layout when available to avoid
-    re-downloading the same base image for every model build.
+    Reuses a cached base image OCI layout when available and up-to-date
+    to avoid re-downloading the same base image for every model build.
     """
     from olot.backend.oras_py import oras_py_pull
     from olot.basics import oci_layers_on_top
@@ -59,16 +83,35 @@ def do_build(args: BuildArgs) -> BuildResult:
 
     # Cache directory for the base image, keyed by the exact image ref
     cache_dir = Path("tmp").joinpath(".base-image-cache", _base_image_cache_key(args.base_image))
-    if cache_dir.exists():
-        logger.info(f"Reusing cached base image {args.base_image} from {cache_dir}")
-        rprint(f"Reusing cached base image {args.base_image}")
-        _copy_cached_layout(cache_dir, oci_layout_dir)
-    else:
+
+    need_pull = True
+    if cache_dir.exists() and not args.pull:
+        # User explicitly disabled pulling – reuse cache unconditionally
+        need_pull = False
+    elif cache_dir.exists():
+        # Pull is enabled: compare cached digest to remote digest
+        try:
+            remote_digest = _remote_manifest_digest(args.base_image)
+            cached_digest = _cached_manifest_digest(cache_dir)
+            if remote_digest == cached_digest:
+                need_pull = False
+            else:
+                logger.info(f"Base image {args.base_image} changed, invalidating cache")
+                shutil.rmtree(cache_dir)
+        except Exception:
+            # If we can't inspect the remote, nuke cache and re-pull to be safe
+            shutil.rmtree(cache_dir)
+
+    if need_pull:
         logger.info(f"Pulling base image {args.base_image} into {oci_layout_dir}")
         rprint(f"Pulling base image {args.base_image} into {oci_layout_dir}")
         oras_py_pull(args.base_image, oci_layout_dir)
         cache_dir.mkdir(parents=True, exist_ok=True)
         _copy_cached_layout(oci_layout_dir, cache_dir)
+    else:
+        logger.info(f"Reusing cached base image {args.base_image} from {cache_dir}")
+        rprint(f"Reusing cached base image {args.base_image}")
+        _copy_cached_layout(cache_dir, oci_layout_dir)
 
     model_files, modelcard_source = list_model_files(args.model_dir)
     if not model_files:

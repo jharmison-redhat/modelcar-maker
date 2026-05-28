@@ -73,12 +73,12 @@ def do_build(args: BuildArgs) -> BuildResult:
     image registry repo, from the files in the model_dir."""
     image = _image(args.model, args.repo)
     render(args.model, args.model_dir, args.commit, args.base_image)
+    build_args = ["-t", image]
+    if args.pull:
+        build_args.insert(0, "--pull=newer")
     podman(
         "build",
-        args=[
-            "-t",
-            image,
-        ],
+        args=build_args,
         context_dir=args.model_dir,
         printer=rprint,
     )

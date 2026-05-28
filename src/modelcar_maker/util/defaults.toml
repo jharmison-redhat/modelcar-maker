@@ -9,6 +9,7 @@ backend = "podman"
 push = true
 cleanup = false
 skip_if_exists = true
+pull = true
 
 [models]
 cleanup = false

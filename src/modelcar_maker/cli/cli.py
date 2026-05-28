@@ -61,6 +61,13 @@ def build(
             help="Base image to use for the modelcar (applies to both backends)",
         ),
     ] = settings.image.base_image,
+    pull: Annotated[
+        bool,
+        typer.Option(
+            "--pull/--no-pull",
+            help="Pull the base image before building if a newer version is available",
+        ),
+    ] = settings.image.pull,
     push: Annotated[
         bool,
         typer.Option(
@@ -143,6 +150,7 @@ def build(
             image_cleanup=image_cleanup,
             model_cleanup=model_cleanup,
             skip_if_exists=skip_if_exists,
+            pull=pull,
         )
         cleanup_str = f"Cleanup: {'✅' if result.image_cleaned_up else '❌'} Image, {'✅' if result.model_cleaned_up else '❌'} Model"
 
