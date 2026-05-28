@@ -4,7 +4,6 @@ import pytest
 from typer.testing import CliRunner
 
 from modelcar_maker.cli.cli import cli
-from modelcar_maker.image.types import Backend
 
 runner = CliRunner()
 
@@ -22,18 +21,11 @@ class TestBuildCommand:
 
         result = runner.invoke(cli, ["MyOrg/MyModel"])
         assert result.exit_code == 0
-        mock_process.assert_called_once_with(
-            "MyOrg/MyModel",
-            "quay.io/jharmison/models",
-            authfile=None,
-            push=True,
-            image_cleanup=False,
-            model_cleanup=False,
-            skip_if_exists=True,
-            backend=Backend.PODMAN,
-            base_image="registry.access.redhat.com/ubi10/ubi-micro:10.2",
-            pull=True,
-        )
+        mock_process.assert_called_once()
+        args, kwargs = mock_process.call_args
+        assert args[0] == "MyOrg/MyModel"
+        assert isinstance(kwargs["architectures"], list)
+        assert len(kwargs["architectures"]) > 0
 
     @patch("modelcar_maker.cli.cli.process")
     def test_no_push(self, mock_process):

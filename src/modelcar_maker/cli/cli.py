@@ -61,6 +61,13 @@ def build(
             help="Base image to use for the modelcar (applies to both backends)",
         ),
     ] = settings.image.base_image,
+    arch: Annotated[
+        list[str],
+        typer.Option(
+            "--arch",
+            help="Target architecture(s) to build for (repeat for multiple)",
+        ),
+    ] = settings.image.architectures,
     pull: Annotated[
         bool,
         typer.Option(
@@ -131,7 +138,7 @@ def build(
 
     logger = make_logger(verbose)
     image_repo = f"{registry}/{repository}"
-    logger.debug(f"Backend: {backend}, Push {image_repo}: {push}")
+    logger.debug(f"Backend: {backend}, Architectures: {arch}, Push {image_repo}: {push}")
     if model is None:
         if not isinstance(settings.models.default, list):
             raise RuntimeError(f"Default models should be a list, not {type(settings.models.default)}")
@@ -145,6 +152,7 @@ def build(
             image_repo,
             backend=backend,
             base_image=base_image,
+            architectures=arch,
             authfile=authfile,
             push=push,
             image_cleanup=image_cleanup,

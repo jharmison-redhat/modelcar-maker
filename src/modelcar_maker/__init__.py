@@ -42,6 +42,7 @@ def process(
     image_repo: str = f"{settings.image.registry}/{settings.image.repository}",
     backend: Backend | str = settings.image.backend,
     base_image: str = settings.image.base_image,
+    architectures: list[str] = settings.image.architectures,
     authfile: Path | None = settings.image.get("authfile"),
     push: bool = settings.image.push,
     image_cleanup: bool = settings.image.cleanup,
@@ -80,7 +81,9 @@ def process(
             result.skipped = True
             if image_cleanup:
                 oci_layout_dir = Path("tmp").joinpath(normalize(model)) if backend is not Backend.PODMAN else None
-                if do_image_rm(RmArgs(model=model, repo=image_repo, oci_layout_dir=oci_layout_dir)):
+                if do_image_rm(
+                    RmArgs(model=model, repo=image_repo, oci_layout_dir=oci_layout_dir, architectures=architectures)
+                ):
                     result.image_cleaned_up = True
             if model_cleanup:
                 download_dir = Path("models").joinpath(normalize(model))
@@ -100,6 +103,7 @@ def process(
             base_image=base_image,
             commit=commit,
             pull=pull,
+            architectures=architectures,
         )
     )
     result.image = build_result.image
@@ -112,6 +116,8 @@ def process(
                 repo=image_repo,
                 authfile=authfile,
                 oci_layout_dir=build_result.oci_layout_dir,
+                architectures=architectures,
+                manifest_list=build_result.manifest_list,
             )
         )
         result.image_pushed = True
@@ -124,6 +130,8 @@ def process(
                         model=model,
                         repo=image_repo,
                         oci_layout_dir=build_result.oci_layout_dir,
+                        architectures=architectures,
+                        manifest_list=build_result.manifest_list,
                     )
                 ):
                     result.image_cleaned_up = True
@@ -133,6 +141,8 @@ def process(
                     model=model,
                     repo=image_repo,
                     oci_layout_dir=build_result.oci_layout_dir,
+                    architectures=architectures,
+                    manifest_list=build_result.manifest_list,
                 )
             ):
                 result.image_cleaned_up = True

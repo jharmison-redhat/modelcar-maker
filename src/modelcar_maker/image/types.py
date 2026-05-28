@@ -1,4 +1,5 @@
 from dataclasses import dataclass
+from dataclasses import field
 from enum import StrEnum
 from pathlib import Path
 from typing import Optional
@@ -21,6 +22,7 @@ class BuildArgs:
     base_image: str
     commit: str
     pull: bool = True
+    architectures: list[str] = field(default_factory=lambda: ["amd64"])
 
 
 @dataclass
@@ -29,6 +31,7 @@ class BuildResult:
 
     image: str
     oci_layout_dir: Optional[Path] = None
+    manifest_list: Optional[str] = None
 
 
 @dataclass
@@ -39,6 +42,8 @@ class PushArgs:
     repo: str
     authfile: Optional[Path] = None
     oci_layout_dir: Optional[Path] = None
+    architectures: list[str] = field(default_factory=lambda: ["amd64"])
+    manifest_list: Optional[str] = None
 
 
 @dataclass
@@ -48,3 +53,5 @@ class RmArgs:
     model: str
     repo: str
     oci_layout_dir: Optional[Path] = None
+    architectures: list[str] = field(default_factory=lambda: ["amd64"])
+    manifest_list: Optional[str] = None

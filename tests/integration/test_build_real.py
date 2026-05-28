@@ -102,7 +102,7 @@ def test_build_real_model_no_push(backend, check_tools):
                     "--override-os",
                     "linux",
                     "--override-arch",
-                    "arm64",
+                    "amd64",
                     f"oci:{OLOT_LAYOUT_DIR.resolve()}",
                     f"docker-archive:{tar_path}:{IMAGE_TAG}",
                 ]
