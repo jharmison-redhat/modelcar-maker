@@ -13,7 +13,6 @@ classifiers = [
 ]
 dependencies = [
     "dynaconf >=3.2.13,<3.3.0",
-    "pydantic >=2.11.7,<2.12.0",
     "typer >=0.16.0,<0.17",
     "huggingface-hub >=0.33.0,<0.34",
     "Jinja2 >=3.1.6,<3.2",
