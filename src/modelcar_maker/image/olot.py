@@ -1,3 +1,4 @@
+import base64
 import hashlib
 import json
 import shutil
@@ -311,9 +312,28 @@ def do_push(args: PushArgs) -> None:
     if args.authfile is not None:
         authfile = str(args.authfile.expanduser().resolve())
         logger.info(f"Loading auth config from {authfile}")
-        registry.auth.load_configs(container, configs=[authfile])
+
+        # Parse the authfile directly—do NOT merge with ~/.docker/config.json.
+        with open(authfile) as f:
+            auth_data = json.load(f)
+        auths = auth_data.get("auths", {})
+        matched = False
+        for host in (container.registry,):
+            entry = auths.get(host)
+            if entry:
+                auth_b64 = entry.get("auth")
+                if auth_b64:
+                    user_pass = base64.b64decode(auth_b64).decode("utf-8")
+                    username, _, password = user_pass.partition(":")
+                    registry.auth.set_basic_auth(username, password)
+                    logger.info(f"Loaded credentials for {host}")
+                    matched = True
+                    break
+        if not matched:
+            logger.info(f"No {container.registry} entry in {authfile}, relying on default Docker config")
+            registry.auth.load_configs(container)
     else:
-        logger.info("No authfile provided, using default Docker config")
+        logger.info("No authfile provided, relying on default Docker config")
         registry.auth.load_configs(container)
 
     try:

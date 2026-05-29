@@ -159,7 +159,7 @@ class TestDoPush:
     def test_push_with_authfile(self, mock_oras_push, tmp_path):
         layout = Path("tmp/myorg--model")
         auth = tmp_path / "my-auth.json"
-        auth.write_text('{"auths":{"quay.io":{"auth":"abc123"}}}')
+        auth.write_text('{"auths":{"quay.io":{"auth":"YWNtZTpzZWNyZXQ="}}}')
 
         args = PushArgs(
             model="MyOrg/Model",
@@ -176,9 +176,29 @@ class TestDoPush:
             target="quay.io/repo:myorg--model-modelcar",
             tag="latest",
         )
+        # load_configs should NOT be called when authfile is provided
+        mock_oras_push["registry"].auth.load_configs.assert_not_called()
+        # Instead, set_basic_auth should be called directly with decoded creds
+        mock_oras_push["registry"].auth.set_basic_auth.assert_called_once_with("acme", "secret")
+
+    def test_push_with_authfile_missing_registry_entry(self, mock_oras_push, tmp_path):
+        """When the authfile lacks an entry for the target registry, fall back to load_configs."""
+        layout = Path("tmp/myorg--model")
+        auth = tmp_path / "my-auth.json"
+        auth.write_text('{"auths":{"docker.io":{"auth":"YWNtZTpzZWNyZXQ="}}}')
+
+        args = PushArgs(
+            model="MyOrg/Model",
+            repo="quay.io/repo",
+            authfile=auth,
+            oci_layout_dir=layout,
+            architectures=["amd64"],
+        )
+        do_push(args)
+
+        # No matching registry entry → falls back to load_configs
         mock_oras_push["registry"].auth.load_configs.assert_called_once()
-        call_args = mock_oras_push["registry"].auth.load_configs.call_args
-        assert call_args[1]["configs"] == [str(auth)]
+        mock_oras_push["registry"].auth.set_basic_auth.assert_not_called()
 
     def test_raises_without_layout_dir(self):
         args = PushArgs(
@@ -198,6 +218,7 @@ class TestDoPush:
 
         layout = Path("tmp/myorg--model")
         auth = tmp_path / "my-auth.json"
+        auth.write_text('{"auths":{"quay.io":{"auth":"YWNtZTpzZWNyZXQ="}}}')
         args = PushArgs(
             model="MyOrg/Model",
             repo="quay.io/repo",
