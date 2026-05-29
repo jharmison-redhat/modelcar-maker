@@ -14,6 +14,8 @@ warnings.filterwarnings("ignore", category=TqdmExperimentalWarning)
 
 def hf_download(repo_id: str) -> tuple[Path, str]:
     """Download the given model repo_id into the models/ directory, returning the path."""
+    from huggingface_hub import HfApi
+
     normalized = normalize(repo_id)
     download_dir = Path(f"models/{normalized}")
     logger.info(f"Downloading {repo_id} to {download_dir}")
@@ -21,21 +23,13 @@ def hf_download(repo_id: str) -> tuple[Path, str]:
         download_dir.mkdir(parents=True, exist_ok=True)
 
     rprint(f"Downloading {repo_id} to {download_dir}")
-    snapshot_download(repo_id, local_dir=download_dir, tqdm_class=tqdm_rich)
+    snapshot_download(repo_id, local_dir=download_dir, tqdm_class=tqdm_rich)  # type: ignore[arg-type]
 
-    cache_dir = download_dir.joinpath(".cache").joinpath("huggingface").joinpath("download")
-    commit = None
-    for root, _, files in cache_dir.walk():
-        for file in files:
-            if file.endswith(".metadata"):
-                metadata_file = Path(root).joinpath(file)
-                with open(metadata_file) as f:
-                    commit = list(f.readlines())[0].strip()
-            if commit is not None:
-                break
+    # Get the commit hash from the public API instead of internal cache metadata.
+    sha = HfApi().model_info(repo_id).sha
+    assert sha is not None
 
-    assert commit is not None
     return (
         download_dir,
-        commit,
+        sha,
     )
