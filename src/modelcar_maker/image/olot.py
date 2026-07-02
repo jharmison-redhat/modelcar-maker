@@ -35,15 +35,20 @@ def _copy_cached_layout(cache_dir: Path, dest_dir: Path) -> None:
 
 
 def _remote_manifest_digest(base_image: str) -> str:
-    """Fetch the raw manifest from the remote registry and return its sha256 digest."""
-    import subprocess
+    """Fetch the manifest digest from the remote registry via an oras-py HEAD request."""
+    from oras.container import Container
+    from oras.defaults import default_manifest_accepted_media_types
 
-    raw = subprocess.run(
-        ["skopeo", "inspect", "--raw", f"docker://{base_image}"],
-        capture_output=True,
-        check=True,
-    ).stdout
-    return "sha256:" + hashlib.sha256(raw).hexdigest()
+    registry = Registry()
+    container = Container(base_image)
+    headers = {"Accept": ", ".join(default_manifest_accepted_media_types)}
+    url = f"{registry.prefix}://{container.manifest_url()}"
+    response = registry.do_request(url, "HEAD", headers=headers)
+    registry._check_200_response(response)
+    digest = response.headers.get("Docker-Content-Digest")
+    if not digest:
+        raise RuntimeError("Expected Docker-Content-Digest header in HEAD response.")
+    return digest
 
 
 def _cached_manifest_digest(cache_dir: Path) -> str | None:

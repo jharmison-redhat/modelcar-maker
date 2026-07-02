@@ -6,7 +6,6 @@ for both podman and olot backends.
 import json
 import shutil
 import subprocess
-import tempfile
 from pathlib import Path
 
 import pytest
@@ -46,17 +45,14 @@ def _run(cmd: list[str], check: bool = True) -> str:
     return result.stdout
 
 
-@pytest.fixture(scope="module")
-def check_tools():
-    missing = [t for t in ("podman", "skopeo") if not _which(t)]
-    if missing:
-        pytest.skip(f"missing required tools: {', '.join(missing)}")
-
-
 @pytest.mark.slow
 @pytest.mark.parametrize("backend", [Backend.PODMAN, Backend.OLOT])
-def test_build_real_model_no_push(backend, check_tools):
+def test_build_real_model_no_push(backend):
     """Build a real tiny model with the CLI, inspect the image, and clean up."""
+    if not _which("podman"):
+        pytest.skip("podman is required for image verification")
+    if backend == Backend.OLOT and not _which("skopeo"):
+        pytest.skip("skopeo is required for olot backend verification")
 
     # Pre-clean stale artifacts from previous failed runs
     if backend == Backend.PODMAN:
@@ -93,6 +89,8 @@ def test_build_real_model_no_push(backend, check_tools):
 
     # 2. Load / verify image
     if backend == Backend.OLOT:
+        import tempfile
+
         with tempfile.TemporaryDirectory() as tmp:
             tar_path = Path(tmp) / "modelcar.tar"
             _run(
