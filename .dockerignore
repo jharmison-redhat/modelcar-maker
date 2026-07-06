@@ -1,0 +1,12 @@
+.tox
+.venv
+tests
+tox.ini
+.mypy_cache
+uv.lock
+models
+tmp
+charts
+AGENTS.md
+.agents
+src/modelcar_maker.egg-info
