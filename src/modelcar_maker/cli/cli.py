@@ -144,7 +144,7 @@ def build(
         if not isinstance(settings.models.default, list):
             ctx.fail(f"Default models should be a list, not {type(settings.models.default)}")
         if len(settings.models.default) < 1:
-            ctx.fail(f"No model provided, default models list is empty")
+            ctx.fail("No model provided, default models list is empty")
         models = settings.models.default
     else:
         models = [model]
