@@ -4,7 +4,6 @@ for both podman and olot backends.
 """
 
 import json
-import platform as _platform
 import shutil
 import subprocess
 from pathlib import Path
@@ -19,18 +18,8 @@ from modelcar_maker.util import normalize
 
 runner = CliRunner()
 
-
-def _host_platform() -> tuple[str, str]:
-    """Return (platform string, arch), e.g. ('linux/amd64', 'amd64')."""
-    machine = _platform.machine()
-    if machine in ("x86_64", "amd64"):
-        return "linux/amd64", "amd64"
-    if machine in ("aarch64", "arm64"):
-        return "linux/arm64", "arm64"
-    return f"linux/{machine}", machine
-
-
-_HOST_PLATFORM, _HOST_ARCH = _host_platform()
+_UNAME_MACHINE = subprocess.run(["uname", "-m"], capture_output=True, text=True, check=True).stdout.strip()
+_HOST_ARCH = "amd64" if _UNAME_MACHINE in ("x86_64", "amd64") else _UNAME_MACHINE
 
 MODEL = "prajjwal1/bert-tiny"
 NORMALIZED = normalize(MODEL)
@@ -127,8 +116,6 @@ def test_build_real_model_no_push(backend):
             [
                 "podman",
                 "run",
-                "--platform",
-                _HOST_PLATFORM,
                 "--rm",
                 "--pull=never",
                 "--entrypoint",
@@ -148,8 +135,6 @@ def test_build_real_model_no_push(backend):
             [
                 "podman",
                 "run",
-                "--platform",
-                _HOST_PLATFORM,
                 "--rm",
                 "--pull=never",
                 "--entrypoint",
