@@ -28,6 +28,7 @@ cli = typer.Typer(
 
 @cli.command()
 def build(
+    ctx: typer.Context,
     model: Annotated[
         Optional[str],
         typer.Argument(help="The model to download (otherwise ensure all defaults are downloaded)"),
@@ -141,7 +142,9 @@ def build(
     logger.debug(f"Backend: {backend}, Architectures: {arch}, Push {image_repo}: {push}")
     if model is None:
         if not isinstance(settings.models.default, list):
-            raise RuntimeError(f"Default models should be a list, not {type(settings.models.default)}")
+            ctx.fail(f"Default models should be a list, not {type(settings.models.default)}")
+        if len(settings.models.default) < 1:
+            ctx.fail(f"No model provided, default models list is empty")
         models = settings.models.default
     else:
         models = [model]
