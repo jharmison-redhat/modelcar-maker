@@ -14,6 +14,7 @@ COPY --chown=1001:1001 ./ ./
 RUN pip install --no-cache-dir .
 
 WORKDIR /modelcar-maker
+ENV HF_TOKEN
 
 ENTRYPOINT ["modelcar-maker"]
 CMD []
