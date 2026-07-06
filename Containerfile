@@ -15,5 +15,7 @@ RUN pip install --no-cache-dir .
 
 WORKDIR /modelcar-maker
 
+VOLUME /modelcar-maker/config.toml
+
 ENTRYPOINT ["modelcar-maker"]
 CMD []
