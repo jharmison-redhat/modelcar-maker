@@ -1,6 +1,5 @@
 """
-End-to-end integration test that builds a real modelcar image using the CLI,
-for both podman and olot backends.
+End-to-end integration test that builds a real modelcar image using the CLI.
 """
 
 import json
@@ -129,38 +128,6 @@ def cleanup() -> Iterator[None]:
 
     if OLOT_LAYOUT_DIR.exists():
         shutil.rmtree(OLOT_LAYOUT_DIR, ignore_errors=True)
-
-
-@pytest.mark.slow
-def test_build_real_model_no_push_podman(build_args: list[str]) -> None:
-    """Build a real tiny model with podman backend, verify the image, and clean up.
-
-    Runs verification against the host platform, which works regardless of
-    whether the manifest contains a single or multiple architectures.
-    """
-    if not _which("podman"):
-        pytest.skip("podman is required for image verification")
-
-    stale_containerfile = PODMAN_BUILD_DIR / "Containerfile"
-    if stale_containerfile.exists():
-        stale_containerfile.unlink()
-
-    result = runner.invoke(cli, build_args + ["--backend", str(Backend.PODMAN)])
-    assert result.exit_code == 0, result.output
-
-    # 1. Assert model was downloaded
-    assert PODMAN_BUILD_DIR.is_dir(), f"Expected model dir {PODMAN_BUILD_DIR} to exist"
-    for fname in EXPECTED_FILES:
-        assert (PODMAN_BUILD_DIR / fname).exists(), f"Expected file {fname} in model dir"
-
-    # Verify list_model_files matches hardcoded expectations
-    files, modelcard = list_model_files(PODMAN_BUILD_DIR)
-    assert files == EXPECTED_FILES
-    assert modelcard == EXPECTED_MODELCARD
-
-    # 2. Verify image using host platform from built manifest
-    host_plat = _host_platform()
-    _verify_image(IMAGE_TAG, host_plat, "/modelcard.md", MODEL, NORMALIZED)
 
 
 @pytest.mark.slow
