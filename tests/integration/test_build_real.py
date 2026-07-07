@@ -6,6 +6,7 @@ for both podman and olot backends.
 import json
 import shutil
 import subprocess
+import tempfile
 from pathlib import Path
 from typing import Iterator
 
@@ -46,25 +47,15 @@ def _run(cmd: list[str], check: bool = True) -> str:
     return result.stdout
 
 
-def _image_platform(image: str) -> tuple[str, str]:
-    """Return (platform string, arch) for an image via podman inspect.
+def _host_platform() -> str:
+    """Return platform string for the host machine (e.g., 'linux/amd64').
 
-    Podman inspect is authoritative — it reflects the actual image OS and
-    architecture regardless of the runner's machine or emulation layer.
-    """
-    os_out = _run(["podman", "image", "inspect", "--format", "{{.Os}}", image])
-    arch_out = _run(["podman", "image", "inspect", "--format", "{{.Architecture}}", image])
-    return f"{os_out.strip()}/{arch_out.strip()}", arch_out.strip()
-
-
-def _image_arch() -> str:
-    """Detect native arch via uname rather than platform.machine().
-
-    platform.machine() can misreport under QEMU emulation in CI runners,
-    whereas uname -m reflects the actual kernel architecture.
+    uname -m reflects the actual kernel architecture, which is more
+    reliable than platform.machine() under QEMU emulation in CI.
     """
     uname_machine = subprocess.run(["uname", "-m"], capture_output=True, text=True, check=True).stdout.strip()
-    return "amd64" if uname_machine in ("x86_64", "amd64") else uname_machine
+    arch = "amd64" if uname_machine in ("x86_64", "amd64") else uname_machine
+    return f"linux/{arch}"
 
 
 def _verify_image(image_tag: str, platform: str, modelcard_path: str, model_name: str, normalized: str) -> None:
@@ -142,7 +133,11 @@ def cleanup() -> Iterator[None]:
 
 @pytest.mark.slow
 def test_build_real_model_no_push_podman(build_args: list[str]) -> None:
-    """Build a real tiny model with podman backend, verify the image, and clean up."""
+    """Build a real tiny model with podman backend, verify the image, and clean up.
+
+    Runs verification against the host platform, which works regardless of
+    whether the manifest contains a single or multiple architectures.
+    """
     if not _which("podman"):
         pytest.skip("podman is required for image verification")
 
@@ -163,9 +158,9 @@ def test_build_real_model_no_push_podman(build_args: list[str]) -> None:
     assert files == EXPECTED_FILES
     assert modelcard == EXPECTED_MODELCARD
 
-    # 2. Verify image — platform derived from the built image itself
-    platform, _ = _image_platform(IMAGE_TAG)
-    _verify_image(IMAGE_TAG, platform, "/modelcard.md", MODEL, NORMALIZED)
+    # 2. Verify image using host platform from built manifest
+    host_plat = _host_platform()
+    _verify_image(IMAGE_TAG, host_plat, "/modelcard.md", MODEL, NORMALIZED)
 
 
 @pytest.mark.slow
@@ -193,9 +188,8 @@ def test_build_real_model_no_push_olot(build_args: list[str]) -> None:
     assert modelcard == EXPECTED_MODELCARD
 
     # 2. Convert OCI layout to docker-archive via skopeo, then load into podman
-    import tempfile
-
-    host_arch = _image_arch()
+    host_plat = _host_platform()
+    host_arch = host_plat.split("/", 1)[1]
 
     with tempfile.TemporaryDirectory() as tmp:
         tar_path = Path(tmp) / "modelcar.tar"
@@ -213,6 +207,5 @@ def test_build_real_model_no_push_olot(build_args: list[str]) -> None:
         )
         _run(["podman", "load", "-i", str(tar_path)])
 
-    # 3. Verify image
-    platform, _ = _image_platform(IMAGE_TAG)
-    _verify_image(IMAGE_TAG, platform, "/models/README.md", MODEL, NORMALIZED)
+    # 3. Verify image — skopeo produced host-arch image
+    _verify_image(IMAGE_TAG, host_plat, "/models/README.md", MODEL, NORMALIZED)
