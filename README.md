@@ -17,22 +17,22 @@ pip install modelcar-maker
 modelcar-maker [OPTIONS] [MODEL]
 ```
 
-| Argument / Option                          | Description                                                                                                        |
-| ------------------------------------------ | ------------------------------------------------------------------------------------------------------------------ |
-| `MODEL`                                    | Hugging Face model repo ID (e.g., `meta-llama/Llama-3.2-3B-Instruct`). Optional if `models.default` is configured. |
-| `--registry`                               | Registry for the output image. Default: `quay.io`.                                                                 |
-| `-r`, `--repository`                       | Repository within the registry. Default: `jharmison/models`.                                                       |
-| `--backend`                                | Build backend. Default: `olot`.                                                                                    |
-| `--base-image`                             | Base OCI image. Default: `registry.access.redhat.com/ubi10/ubi-micro:10.2`.                                        |
-| `--arch`                                   | Target architecture(s). Repeat for multiple. Default: `amd64`, `arm64`.                                            |
-| `--pull` / `--no-pull`                     | Pull base image if a newer version is available. Default: `--pull`.                                                |
-| `--push` / `--no-push`                     | Push the image after building. Default: `--push`.                                                                  |
-| `-a`, `--authfile`                         | Path to Docker/podman auth config for registry push.                                                               |
-| `--image-clean-up` / `--no-image-clean-up` | Remove local container image after push. Default: off.                                                             |
-| `--model-clean-up` / `--no-model-clean-up` | Remove downloaded model files after build. Default: off.                                                           |
-| `--skip-if-exists` / `--no-skip-if-exists` | Skip if the tag already exists at the registry. Default: on.                                                       |
-| `-v`                                       | Increase logging verbosity. Repeat for more.                                                                       |
-| `-V`                                       | Print version and exit.                                                                                            |
+| Argument / Option                          | Description                                                                                                                          |
+| ------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------ |
+| `MODEL`                                    | Hugging Face model repo ID (e.g., `meta-llama/Llama-3.2-3B-Instruct`). Optional if `models.default` is configured.                   |
+| `--registry`                               | Registry for the output image. Default: `quay.io`.                                                                                   |
+| `-r`, `--repository`                       | Repository within the registry. Default: `jharmison/models`.                                                                         |
+| `--backend`                                | Build backend. Default: `olot`. The `podman` backend requires extra dependencies (included via `pip install modelcar-maker[podman]`) |
+| `--base-image`                             | Base OCI image. Default: `registry.access.redhat.com/ubi10/ubi-micro:10.2`.                                                          |
+| `--arch`                                   | Target architecture(s). Repeat for multiple. Default: `amd64`, `arm64`.                                                              |
+| `--pull` / `--no-pull`                     | Pull base image if a newer version is available. Default: `--pull`.                                                                  |
+| `--push` / `--no-push`                     | Push the image after building. Default: `--push`.                                                                                    |
+| `-a`, `--authfile`                         | Path to Docker/podman auth config for registry push.                                                                                 |
+| `--image-clean-up` / `--no-image-clean-up` | Remove local container image after push. Default: off.                                                                               |
+| `--model-clean-up` / `--no-model-clean-up` | Remove downloaded model files after build. Default: off.                                                                             |
+| `--skip-if-exists` / `--no-skip-if-exists` | Skip if the tag already exists at the registry. Default: on.                                                                         |
+| `-v`                                       | Increase logging verbosity. Repeat for more.                                                                                         |
+| `-V`                                       | Print version and exit.                                                                                                              |
 
 **Image tag format:** `{registry}/{repository}/{normalized-model}-modelcar`
 
