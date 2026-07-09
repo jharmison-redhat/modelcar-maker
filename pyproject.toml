@@ -6,21 +6,20 @@ authors = [{ name = "James Harmison", email = "jharmison@redhat.com" }]
 description = """\
 A tool to build modelcar images with layers per file\
 """
+license = "ISC"
 license-files = ["LICENSE"]
-classifiers = [
-  "License :: OSI Approved :: ISC License (ISCL)",
-  "Operating System :: POSIX :: Linux",
-]
+readme = "README.md"
+classifiers = ["Operating System :: POSIX :: Linux"]
 dependencies = [
   "dynaconf >=3.2.13,<3.3.0",
   "typer >=0.25.1,<0.26.0",
   "huggingface-hub >=1.17.0,<1.18.0",
-  "Jinja2 >=3.1.6,<3.2",
   "olot[oras-py] >=0.1.17,<0.2.0",
 ]
 
 [project.optional-dependencies]
 dev = ["tox", "pytest"]
+podman = ["Jinja2 >=3.1.6,<3.2"]
 
 [project.urls]
 Source = "https://github.com/jharmison-redhat/modelcar-maker"
@@ -36,7 +35,7 @@ modelcar_maker = ["defaults.toml", "Containerfile.j2"]
 write_to = "src/modelcar_maker/__version__.py"
 
 [build-system]
-requires = ["setuptools", "wheel", "setuptools-scm"]
+requires = ["setuptools>=80", "setuptools-scm>=8"]
 build-backend = "setuptools.build_meta"
 
 [tool.black]

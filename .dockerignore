@@ -4,6 +4,7 @@
 tests
 tox.ini
 .mypy_cache
+.pytest_cache
 uv.lock
 models
 tmp
