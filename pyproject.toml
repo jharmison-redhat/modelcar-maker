@@ -6,17 +6,17 @@ authors = [{ name = "James Harmison", email = "jharmison@redhat.com" }]
 description = """\
 A tool to build modelcar images with layers per file\
 """
-license = { file = "LICENSE" }
+license-files = ["LICENSE"]
 classifiers = [
-    "License :: OSI Approved :: ISC License (ISCL)",
-    "Operating System :: POSIX :: Linux",
+  "License :: OSI Approved :: ISC License (ISCL)",
+  "Operating System :: POSIX :: Linux",
 ]
 dependencies = [
-    "dynaconf >=3.2.13,<3.3.0",
-    "typer >=0.25.1,<0.26.0",
-    "huggingface-hub >=1.17.0,<1.18.0",
-    "Jinja2 >=3.1.6,<3.2",
-    "olot[oras-py] >=0.1.17,<0.2.0",
+  "dynaconf >=3.2.13,<3.3.0",
+  "typer >=0.25.1,<0.26.0",
+  "huggingface-hub >=1.17.0,<1.18.0",
+  "Jinja2 >=3.1.6,<3.2",
+  "olot[oras-py] >=0.1.17,<0.2.0",
 ]
 
 [project.optional-dependencies]
@@ -51,9 +51,7 @@ line_length = 120
 src_paths = ["src", "tests"]
 
 [tool.pytest.ini_options]
-markers = [
-    "slow: marks tests as slow (deselect with -m 'not slow')",
-]
+markers = ["slow: marks tests as slow (deselect with -m 'not slow')"]
 
 [tool.pyright]
 venvPath = "."
