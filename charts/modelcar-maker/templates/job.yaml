@@ -30,13 +30,13 @@ spec:
             - /bin/sh
           args:
             - -c
-            - update-ca-trust
+            - update-ca-trust extract --output /extracted
           volumeMounts:
             - name: service-ca
               mountPath: /etc/pki/ca-trust/source/anchors/service-ca.crt
               subPath: service-ca.crt
             - name: extracted-cas
-              mountPath: /etc/pki/ca-trust/extracted
+              mountPath: /extracted
           securityContext:
             {{- toYaml .Values.securityContext | nindent 12 }}
           {{- with .Values.resources }}
@@ -86,6 +86,8 @@ spec:
           env:
             - name: HOME
               value: /modelcar-maker
+            - name: REQUESTS_CA_BUNDLE
+              value: /etc/pki/ca-trust/extracted/openssl/ca-bundle.trust.crt
           envFrom:
             - secretRef:
                 name: {{ include "modelcar-maker.fullname" . }}
