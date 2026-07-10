@@ -29,7 +29,7 @@ jobs:
             name="$(basename "$chart")"
             version="$(awk '/^version:/{print $2}' "$chart/Chart.yaml")"
             before_sha="${{ github.event.before }}"
-            if git show "$before_sha:$chart/Chart.yaml" >/dev/null 2>&1; then
+            if git show "$before_sha:$chart/Chart.yaml"; then
               echo "found old chart in $before_sha"
               old_version="$(git show "$before_sha:$chart/Chart.yaml" | awk '/^version:/{print $2}')"
             else
