@@ -4,6 +4,14 @@ on:
   push:
     branches:
       - main
+    paths:
+      - "src/**"
+      - "tests/**"
+      - Containerfile
+      - README.md
+      - LICENSE
+      - pyproject.toml
+      - tox.ini
 
 permissions: {}
 
