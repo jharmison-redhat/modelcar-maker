@@ -14,7 +14,15 @@ system_configs = [
 ]
 user_config = Path(os.getenv("XDG_CONFIG_HOME", "~/.config")).expanduser().joinpath("modelcar-maker", "config.toml")
 running_config = Path.cwd().joinpath("config.toml")
+explicit_config = os.getenv("MODELCAR_MAKER_CONFIG")
 include_configs = system_configs + [user_config, running_config]
+if explicit_config is not None:
+    if explicit_config.startswith("/"):
+        explicit_config_path = Path(explicit_config)
+    else:
+        explicit_config_path = Path.cwd().joinpath(explicit_config)
+
+    include_configs.append(explicit_config_path)
 
 if skip_load:
     settings = Dynaconf(

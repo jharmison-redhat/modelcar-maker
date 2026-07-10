@@ -52,7 +52,7 @@ def build(
         Backend,
         typer.Option(
             "--backend",
-            help="Build backend to use: olot (default) or podman",
+            help="Build backend to use: olot (default) is only supported",
         ),
     ] = Backend(settings.image.backend),
     base_image: Annotated[

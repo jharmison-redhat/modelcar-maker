@@ -63,12 +63,7 @@ def process(
     from .image.types import PushArgs
     from .image.types import RmArgs
 
-    if backend is Backend.PODMAN:
-        from .image.podman import do_build
-        from .image.podman import do_image_rm
-        from .image.podman import do_push
-        from .image.podman import image_exists
-    else:
+    if backend is Backend.OLOT:
         from .image.olot import do_build
         from .image.olot import do_image_rm
         from .image.olot import do_push
@@ -80,7 +75,7 @@ def process(
             # We should still check if a cleanup is called for.
             result.skipped = True
             if image_cleanup:
-                oci_layout_dir = Path("tmp").joinpath(normalize(model)) if backend is not Backend.PODMAN else None
+                oci_layout_dir = Path("tmp").joinpath(normalize(model)) if backend is Backend.OLOT else None
                 if do_image_rm(
                     RmArgs(model=model, repo=image_repo, oci_layout_dir=oci_layout_dir, architectures=architectures)
                 ):
@@ -123,19 +118,7 @@ def process(
         result.image_pushed = True
 
     if image_cleanup:
-        if backend is Backend.PODMAN:
-            if image_exists(model, image_repo):
-                if do_image_rm(
-                    RmArgs(
-                        model=model,
-                        repo=image_repo,
-                        oci_layout_dir=build_result.oci_layout_dir,
-                        architectures=architectures,
-                        manifest_list=build_result.manifest_list,
-                    )
-                ):
-                    result.image_cleaned_up = True
-        else:
+        if backend is Backend.OLOT:
             if do_image_rm(
                 RmArgs(
                     model=model,

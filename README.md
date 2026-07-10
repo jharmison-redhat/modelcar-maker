@@ -17,27 +17,28 @@ pip install modelcar-maker
 modelcar-maker [OPTIONS] [MODEL]
 ```
 
-| Argument / Option                          | Description                                                                                                                          |
-| ------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------ |
-| `MODEL`                                    | Hugging Face model repo ID (e.g., `meta-llama/Llama-3.2-3B-Instruct`). Optional if `models.default` is configured.                   |
-| `--registry`                               | Registry for the output image. Default: `quay.io`.                                                                                   |
-| `-r`, `--repository`                       | Repository within the registry. Default: `jharmison/models`.                                                                         |
-| `--backend`                                | Build backend. Default: `olot`. The `podman` backend requires extra dependencies (included via `pip install modelcar-maker[podman]`) |
-| `--base-image`                             | Base OCI image. Default: `registry.access.redhat.com/ubi10/ubi-micro:10.2`.                                                          |
-| `--arch`                                   | Target architecture(s). Repeat for multiple. Default: `amd64`, `arm64`.                                                              |
-| `--pull` / `--no-pull`                     | Pull base image if a newer version is available. Default: `--pull`.                                                                  |
-| `--push` / `--no-push`                     | Push the image after building. Default: `--push`.                                                                                    |
-| `-a`, `--authfile`                         | Path to Docker/podman auth config for registry push.                                                                                 |
-| `--image-clean-up` / `--no-image-clean-up` | Remove local container image after push. Default: off.                                                                               |
-| `--model-clean-up` / `--no-model-clean-up` | Remove downloaded model files after build. Default: off.                                                                             |
-| `--skip-if-exists` / `--no-skip-if-exists` | Skip if the tag already exists at the registry. Default: on.                                                                         |
-| `-v`                                       | Increase logging verbosity. Repeat for more.                                                                                         |
-| `-V`                                       | Print version and exit.                                                                                                              |
+| Argument / Option                          | Description                                                                                                        |
+| ------------------------------------------ | ------------------------------------------------------------------------------------------------------------------ |
+| `MODEL`                                    | Hugging Face model repo ID (e.g., `meta-llama/Llama-3.2-3B-Instruct`). Optional if `models.default` is configured. |
+| `--registry`                               | Registry for the output image. Default: `quay.io`.                                                                 |
+| `-r`, `--repository`                       | Repository within the registry. Default: `jharmison/models`.                                                       |
+| `--backend`                                | Build backend. Default: `olot`.                                                                                    |
+| `--base-image`                             | Base OCI image. Default: `registry.access.redhat.com/ubi10/ubi-micro:10.2`.                                        |
+| `--arch`                                   | Target architecture(s). Repeat for multiple. Default: `amd64`, `arm64`.                                            |
+| `--pull` / `--no-pull`                     | Pull base image if a newer version is available. Default: `--pull`.                                                |
+| `--push` / `--no-push`                     | Push the image after building. Default: `--push`.                                                                  |
+| `-a`, `--authfile`                         | Path to `.docker/config.json` style authfile for registry push.                                                    |
+| `--image-clean-up` / `--no-image-clean-up` | Remove local container image after push. Default: off.                                                             |
+| `--model-clean-up` / `--no-model-clean-up` | Remove downloaded model files after build. Default: off.                                                           |
+| `--skip-if-exists` / `--no-skip-if-exists` | Skip if the tag already exists at the registry. Default: on.                                                       |
+| `-v`                                       | Increase logging verbosity. Repeat for more.                                                                       |
+| `-V`                                       | Print version and exit.                                                                                            |
 
 **Image tag format:** `{registry}/{repository}/{normalized-model}-modelcar`
 
-The model repo ID is normalized for use as a tag: slashes become `--`, dots become `_`, and the string is lowercased.
-For example, `meta-llama/Llama-3.2-3B-Instruct` produces tag `meta-llama--llama_3-2-3b-instruct-modelcar`.
+The model repo ID is normalized for use as a tag: slashes become `--`, dots become `_`, and the string is lowercased
+before appending `-modelcar`. For example, `meta-llama/Llama-3.2-3B-Instruct` produces tag
+`meta-llama--llama_3-2-3b-instruct-modelcar`.
 
 **Examples:**
 
@@ -56,12 +57,14 @@ modelcar-maker mistralai/Mistral-7B --arch amd64 --arch arm64 --image-clean-up -
 
 Settings are resolved in layer order (later layers override earlier ones):
 
-1. Built-in defaults ([`defaults.toml`](src/modelcar_maker/util/defaults.toml))
+1. Built-in defaults ([`defaults.toml`](src/modelcar_maker/util/defaults.toml) useful as a reference)
 2. `/usr/share/modelcar-maker/config.toml`
 3. `/etc/modelcar-maker/config.toml`
 4. `~/.config/modelcar-maker/config.toml`
 5. `./config.toml` (current working directory)
-6. Environment variables with prefix `MODELCAR_MAKER_`
+6. The config in the path described by the `MODELCAR_MAKER_CONFIG` environment variable
+7. Environment variables with prefix `MODELCAR_MAKER_`
+8. CLI arguments override all of the above
 
 Any setting can be overridden via environment variable by uppercasing the section and key and joining with underscores.
 For example:
@@ -82,7 +85,10 @@ push = true
 architectures = ["amd64"]
 
 [models]
-default = ["meta-llama/Llama-3.2-3B-Instruct", "BAAI/bge-large-en-v1.5"]
+default = [
+  "meta-llama/Llama-3.2-3B-Instruct",
+  "BAAI/bge-large-en-v1.5",
+]
 ```
 
 Setting default models allows running `modelcar-maker` with no arguments to build all listed models.

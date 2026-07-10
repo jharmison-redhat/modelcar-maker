@@ -8,7 +8,6 @@ from typing import Optional
 class Backend(StrEnum):
     """Supported build backends."""
 
-    PODMAN = "podman"
     OLOT = "olot"
 
 

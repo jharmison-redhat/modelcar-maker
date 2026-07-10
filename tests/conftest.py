@@ -21,43 +21,6 @@ def tmp_model_dir(tmp_path):
     return d
 
 
-@pytest.fixture
-def mock_popen():
-    """Patch subprocess.Popen and return the mock class."""
-    with patch("modelcar_maker.image.podman.subprocess.Popen") as m:
-        mock_proc = MagicMock()
-        mock_proc.stdout.readline.return_value = b""
-        mock_proc.wait.return_value = 0
-        m.return_value = mock_proc
-        yield m, mock_proc
-
-
-@pytest.fixture
-def image_search_json():
-    """Return the podman search JSON that includes our tag."""
-    return json.dumps(
-        [
-            {
-                "Name": "quay.io/repo",
-                "Tags": ["testorg--testmodel-modelcar", "other"],
-            }
-        ]
-    )
-
-
-@pytest.fixture
-def image_search_json_missing():
-    """Return the podman search JSON that does NOT include our tag."""
-    return json.dumps(
-        [
-            {
-                "Name": "quay.io/repo",
-                "Tags": ["other"],
-            }
-        ]
-    )
-
-
 def pytest_collection_modifyitems(config, items):
     """Skip slow tests by default unless a -m marker expression is explicitly given."""
     option_markexpr = getattr(config.option, "markexpr", None)

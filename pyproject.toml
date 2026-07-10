@@ -19,7 +19,6 @@ dependencies = [
 
 [project.optional-dependencies]
 dev = ["tox", "pytest"]
-podman = ["Jinja2 >=3.1.6,<3.2"]
 
 [project.urls]
 Source = "https://github.com/jharmison-redhat/modelcar-maker"
