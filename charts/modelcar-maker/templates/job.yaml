@@ -1,0 +1,109 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: {{ include "modelcar-maker.fullname" . }}-{{ include "modelcar-maker.config-hash" . | substr 0 7 }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "modelcar-maker.labels" . | nindent 4 }}
+  annotations:
+    helm.sh/resource-policy: keep
+spec:
+  backoffLimit: {{ .Values.backoffLimit }}
+  template:
+    metadata:
+      labels:
+        {{- include "modelcar-maker.labels" . | nindent 8 }}
+      annotations:
+        {{- include "modelcar-maker.podAnnotations" . | nindent 8 }}
+    spec:
+      serviceAccountName: {{ include "modelcar-maker.serviceAccountName" . }}
+      restartPolicy: Never
+      securityContext:
+        {{- toYaml .Values.podSecurityContext | nindent 8 }}
+      {{- if not .Values.modelcar.pushAuthString }}
+      initContainers:
+        - name: authfile-builder
+          image: {{ include "modelcar-maker.image-name" . }}
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          command:
+            - /bin/sh
+          args:
+            - -c
+            - |-
+              token="$(cat /var/run/secrets/kubernetes.io/serviceaccount/token)"
+              auth_string="$(echo -n "serviceaccount:${token}" | base64 -w0)"
+              mkdir -p /modelcar-maker/.docker
+              cat << EOF > /modelcar-maker/.docker/config.json
+              {
+                "auths": {
+                  "{{ .Values.modelcar.image.registry }}": {
+                    "auth": "${auth_string}"
+                  }
+                }
+              }
+              EOF
+          volumeMounts:
+            - name: workspace
+              mountPath: /modelcar-maker
+          securityContext:
+            {{- toYaml .Values.securityContext | nindent 12 }}
+          {{- with .Values.resources }}
+          resources:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+      {{- end }}
+      containers:
+        - name: modelcar-maker
+          image: {{ include "modelcar-maker.image-name" . }}
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          command:
+            - modelcar-maker
+          args: []
+          env:
+            - name: HOME
+              value: /modelcar-maker
+          envFrom:
+            - secretRef:
+                name: {{ include "modelcar-maker.fullname" . }}
+                optional: true
+          workingDir: /modelcar-maker
+          volumeMounts:
+            - name: config
+              mountPath: /etc/modelcar-maker
+            - name: workspace
+              mountPath: /modelcar-maker
+            {{- if .Values.modelcar.pushAuthString }}
+            - name: push-secret
+              mountPath: /modelcar-maker/.docker/config.json
+              subPath: config.json
+            {{- end }}
+          securityContext:
+            {{- toYaml .Values.securityContext | nindent 12 }}
+          {{- with .Values.resources }}
+          resources:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+      volumes:
+        - name: config
+          configMap:
+            name: {{ include "modelcar-maker.fullname" . }}
+        - name: workspace
+          {{- if eq .Values.workspace.type "emptyDir" }}
+          {{- if .Values.workspace.emptyDir }}
+          emptyDir:
+            {{- toYaml .Values.workspace.emptyDir | nindent 12 }}
+          {{- else }}
+          emptyDir: {}
+          {{- end }}
+          {{- else if eq .Values.workspace.type "pvc" }}
+          persistentVolumeClaim:
+            claimName: {{ include "modelcar-maker.fullname" . }}
+          {{- end }}
+        {{- if .Values.modelcar.pushAuthString }}
+        - name: push-secret
+          secret:
+            secretName: {{ include "modelcar-maker.fullname" . }}-push
+            items:
+              - key: .dockerconfigjson
+                path: config.json
+        {{- end }}

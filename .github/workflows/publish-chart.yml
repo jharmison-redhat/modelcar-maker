@@ -1,0 +1,57 @@
+name: Build & Publish Helm Chart (main branch)
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - "charts/**"
+      - .github/workflows/publish-chart.yml
+
+permissions: {}
+
+jobs:
+  versions:
+    runs-on: ubuntu-latest
+    steps:
+      - id: checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - id: versions
+        run: .github/workflows/chart_versions.sh
+        env:
+          BEFORE_SHA: ${{ github.event.before }}
+    outputs:
+      publish: ${{ steps.versions.outputs.publish }}
+      matrix: ${{ steps.versions.outputs.matrix }}
+
+  publish:
+    runs-on: ubuntu-latest
+    needs: versions
+    if: ${{ needs.versions.outputs.publish == 'true' }}
+    strategy:
+      matrix: ${{ fromJSON(needs.versions.outputs.matrix) }}
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - id: checkout
+        uses: actions/checkout@v4
+      - id: setup-helm
+        uses: azure/setup-helm@v4
+      - id: log-in
+        run: |
+          echo "${{ secrets.GITHUB_TOKEN }}" | helm registry login ghcr.io -u ${{ github.actor }} --password-stdin
+      - id: package-and-push
+        run: |
+          set -euo pipefail
+
+          workdir="$(mktemp -d)"
+          newpath="${workdir}/${{ matrix.name }}-chart"
+
+          cp -a '${{ matrix.path }}' "${newpath}"
+          sed -i -E 's/^name:[[:space:]]*${{ matrix.name }}$/name: ${{ matrix.name }}-chart/' "${newpath}/Chart.yaml"
+
+          helm package "${newpath}"
+          helm push "${{ matrix.name }}-chart-${{ matrix.version }}.tgz" 'oci://ghcr.io/${{ github.repository }}'

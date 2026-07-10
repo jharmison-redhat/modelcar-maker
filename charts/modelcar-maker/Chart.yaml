@@ -1,0 +1,9 @@
+apiVersion: v2
+name: modelcar-maker
+description: >
+  A Helm chart to use Modelcar Maker in OpenShift, leveraging Jobs or CronJobs and the integrated Image Registry, with
+  OpenShift AI integration through Data Science Connections and the Model Registry.
+
+type: application
+version: 0.1.0
+appVersion: "0.4.0"

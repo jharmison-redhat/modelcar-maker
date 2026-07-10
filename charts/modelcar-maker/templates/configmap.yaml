@@ -1,0 +1,26 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "modelcar-maker.fullname" . }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "modelcar-maker.labels" $ | nindent 4 }}
+data:
+  config.toml: |
+    [meta]
+    verbosity = {{ .Values.verbosity }}
+
+    [image]
+    registry = {{ quote .Values.modelcar.image.registry }}
+    repository = {{ tpl .Values.modelcar.image.repository . | quote}}
+    base_image = {{ quote .Values.modelcar.baseImage }}
+    backend = "olot"
+    architectures = {{ toToml .Values.modelcar.architectures }}
+    push = true
+    cleanup = {{ toToml .Values.modelcar.cleanup }}
+    skip_if_exists = {{ toToml .Values.modelcar.skipIfExists }}
+    pull = {{ toToml .Values.modelcar.baseImagePull }}
+
+    [models]
+    cleanup = {{ toToml .Values.workspace.modelCleanup }}
+    default = {{ toToml .Values.models }}
