@@ -20,6 +20,38 @@ spec:
       restartPolicy: Never
       securityContext:
         {{- toYaml .Values.podSecurityContext | nindent 8 }}
+      {{- if not .Values.modelcar.pushAuthString }}
+      initContainers:
+        - name: authfile-builder
+          image: {{ include "modelcar-maker.image-name" . }}
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          command:
+            - /bin/sh
+          args:
+            - -c
+            - |-
+              token="$(cat /var/run/secrets/kubernetes.io/serviceaccount/token)"
+              auth_string="$(echo -n "serviceaccount:${token}" | base64 -w0)"
+              mkdir -p /modelcar-maker/.docker
+              cat << EOF > /modelcar-maker/.docker/config.json
+              {
+                "auths": {
+                  "{{ .Values.modelcar.image.registry }}": {
+                    "auth": "${auth_string}"
+                  }
+                }
+              }
+              EOF
+          volumeMounts:
+            - name: workspace
+              mountPath: /modelcar-maker
+          securityContext:
+            {{- toYaml .Values.securityContext | nindent 12 }}
+          {{- with .Values.resources }}
+          resources:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+      {{- end }}
       containers:
         - name: modelcar-maker
           image: {{ include "modelcar-maker.image-name" . }}
@@ -29,7 +61,7 @@ spec:
           args: []
           env:
             - name: HOME
-              value: /home/modelcar-maker
+              value: /modelcar-maker
           envFrom:
             - secretRef:
                 name: {{ include "modelcar-maker.fullname" . }}
@@ -40,6 +72,11 @@ spec:
               mountPath: /etc/modelcar-maker
             - name: workspace
               mountPath: /modelcar-maker
+            {{- if .Values.modelcar.pushAuthString }}
+            - name: push-secret
+              mountPath: /modelcar-maker/.docker/config.json
+              subPath: config.json
+            {{- end }}
           securityContext:
             {{- toYaml .Values.securityContext | nindent 12 }}
           {{- with .Values.resources }}
@@ -62,4 +99,11 @@ spec:
           persistentVolumeClaim:
             claimName: {{ include "modelcar-maker.fullname" . }}
           {{- end }}
-        {{- if and (not .Values.modelcar.imageStream.create) .Values.modelcar }}
+        {{- if .Values.modelcar.pushAuthString }}
+        - name: push-secret
+          secret:
+            secretName: {{ include "modelcar-maker.fullname" . }}-push
+            items:
+              - key: .dockerconfigjson
+                path: config.json
+        {{- end }}

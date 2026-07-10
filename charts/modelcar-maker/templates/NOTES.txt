@@ -1,0 +1,11 @@
+Publishing the following models:
+
+{{ toYaml .Values.models }}
+
+To tags in the following repository: {{ .Values.modelcar.image.registry }}/{{ tpl .Values.modelcar.image.repository . }}
+
+For pod logs, run:
+
+```
+kubectl logs -n {{ .Release.Namespace }} job/{{ include "modelcar-maker.fullname" . }}-{{ include "modelcar-maker.config-hash" . | substr 0 7 }}
+```

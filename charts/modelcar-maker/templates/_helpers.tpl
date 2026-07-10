@@ -99,3 +99,16 @@ Create the job image name
     {{- default .Chart.AppVersion .Values.image.tag -}}
   {{- end -}}
 {{- end -}}
+
+{{/*
+Create an authfile to use for the push
+*/}}
+{{- define "modelcar-maker.docker-config-json" -}}
+{
+  "auths": {
+    {{ quote .Values.modelcar.image.registry }}: {
+      "auth": {{ quote .Values.modelcar.pushAuthString }}
+    }
+  }
+}
+{{- end -}}

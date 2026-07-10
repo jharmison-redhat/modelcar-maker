@@ -1,0 +1,9 @@
+models:
+  - TinyLlama/TinyLlama-1.1B-Chat-v1.0
+modelcar:
+  image:
+    registry: quay.io
+    repository: jharmison/models
+  imageStream:
+    create: false
+  pushAuthString: ZmFrZXVzZXI6ZmFrZXBhc3N3b3Jk

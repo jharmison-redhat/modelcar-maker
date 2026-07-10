@@ -1,0 +1,12 @@
+{{- if .Values.modelcar.pushAuthString }}
+apiVersion: v1
+kind: Secret
+metadata:
+  name: {{ include "modelcar-maker.fullname" . }}-push
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "modelcar-maker.labels" $ | nindent 4 }}
+type: kubernetes.io/dockerconfigjson
+data:
+  .dockerconfigjson: {{ include "modelcar-maker.docker-config-json" . | b64enc }}
+{{- end }}
