@@ -1,6 +1,8 @@
 #!/bin/bash
 
-publish_oci=false
+set -euo pipefail
+
+publish=false
 declare -A publish_charts
 declare -A chart_version
 
@@ -16,19 +18,17 @@ while read -rd $'\0' chart; do
   echo "$name: $version (old: $old_version)"
 
   if [ "$version" != "$old_version" ]; then
-    publish_oci=true
+    publish=true
     publish_charts["$name"]="$chart"
     chart_version["$name"]="$version"
   fi
 done < <(find charts -type d -mindepth 1 -maxdepth 1 -print0)
 
-output='{"publish": '"${publish_oci}"', "charts": {'
+charts='{"include": ['
 for chart in "${!publish_charts[@]}"; do
-  echo "adding $chart"
-  output+='"'"$chart"'": {"path": "'"${publish_charts[$chart]}"'", "version": "'"${chart_version[$chart]}"'"}, '
+  charts+='{"name": "'"$chart"'", "path": "'"${publish_charts[$chart]}"'", "version": "'"${chart_version[$chart]}"'"}, '
 done
-echo "wip: $output"
+charts="${charts%, }]}"
 
-output="${output%, }}}"
-
-echo "final: $output"
+echo "publish=${publish}" >> "$GITHUB_OUTPUT"
+echo "matrix=$charts" >> "$GITHUB_OUTPUT"
