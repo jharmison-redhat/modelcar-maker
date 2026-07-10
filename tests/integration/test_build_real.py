@@ -29,8 +29,8 @@ EXPECTED_FILES = [
 ]
 EXPECTED_MODELCARD = "README.md"
 IMAGE_TAG = f"localhost/modelcar-maker-integration-test:{NORMALIZED}-modelcar"
-PODMAN_BUILD_DIR = Path("models") / NORMALIZED
-OLOT_LAYOUT_DIR = Path("tmp") / NORMALIZED
+MODEL_DIR = Path("models") / NORMALIZED
+OLOT_LAYOUT_DIR = Path("tmp") / f"{NORMALIZED}-modelcar"
 
 
 def _which(tool: str) -> bool:
@@ -122,10 +122,6 @@ def cleanup() -> Iterator[None]:
     yield
     _run(["podman", "image", "rm", IMAGE_TAG], check=False)
 
-    containerfile = PODMAN_BUILD_DIR / "Containerfile"
-    if containerfile.exists():
-        containerfile.unlink()
-
     if OLOT_LAYOUT_DIR.exists():
         shutil.rmtree(OLOT_LAYOUT_DIR, ignore_errors=True)
 
@@ -145,12 +141,12 @@ def test_build_real_model_no_push_olot(build_args: list[str]) -> None:
     assert result.exit_code == 0, result.output
 
     # 1. Assert model was downloaded
-    assert PODMAN_BUILD_DIR.is_dir(), f"Expected model dir {PODMAN_BUILD_DIR} to exist"
+    assert MODEL_DIR.is_dir(), f"Expected model dir {MODEL_DIR} to exist"
     for fname in EXPECTED_FILES:
-        assert (PODMAN_BUILD_DIR / fname).exists(), f"Expected file {fname} in model dir"
+        assert (MODEL_DIR / fname).exists(), f"Expected file {fname} in model dir"
 
     # Verify list_model_files matches hardcoded expectations
-    files, modelcard = list_model_files(PODMAN_BUILD_DIR)
+    files, modelcard = list_model_files(MODEL_DIR)
     assert files == EXPECTED_FILES
     assert modelcard == EXPECTED_MODELCARD
 

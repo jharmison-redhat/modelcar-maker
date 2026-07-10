@@ -33,6 +33,14 @@ def build(
         Optional[str],
         typer.Argument(help="The model to download (otherwise ensure all defaults are downloaded)"),
     ] = None,
+    files: Annotated[
+        list[str],
+        typer.Option(
+            "-f",
+            "--files",
+            help="Specific files from the Hugging Face repository to grab, instead of all",
+        ),
+    ] = list(),
     registry: Annotated[
         str,
         typer.Option(
@@ -48,11 +56,19 @@ def build(
             help="The repository, within the registry, to include in the image reference",
         ),
     ] = settings.image.repository,
+    tag: Annotated[
+        Optional[str],
+        typer.Option(
+            "-t",
+            "--tag",
+            help="The explicit tag to set, instead of auto-detecting per model",
+        ),
+    ] = None,
     backend: Annotated[
         Backend,
         typer.Option(
             "--backend",
-            help="Build backend to use: olot (default) or podman",
+            help="Build backend to use: olot (default) is only supported",
         ),
     ] = Backend(settings.image.backend),
     base_image: Annotated[
@@ -153,6 +169,8 @@ def build(
         result = process(
             str(model),
             image_repo,
+            files=files,
+            tag=tag,
             backend=backend,
             base_image=base_image,
             architectures=arch,

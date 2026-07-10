@@ -3,9 +3,10 @@ from pathlib import Path
 from ..util import normalize
 
 
-def _image(model: str, repo: str) -> str:
+def _image(model: str, repo: str, tag: str | None = None) -> str:
     """Given a model repo id and container image repository, render the full image name."""
-    tag = normalize(model) + "-modelcar"
+    if tag is None:
+        tag = normalize(model) + "-modelcar"
     return f"{repo}:{tag}"
 
 

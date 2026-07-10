@@ -48,7 +48,7 @@ class TestDoBuild:
         )
         result = do_build(args)
 
-        expected_layout = Path("tmp/myorg--model")
+        expected_layout = Path("tmp/myorg--model-modelcar")
         mock_olot_deps["pull_base_image"].assert_called_once_with(BASE_IMAGE, expected_layout, ["amd64"])
         mock_olot_deps["oci_layers_on_top"].assert_called_once()
 
@@ -76,7 +76,7 @@ class TestDoBuild:
         )
         result = do_build(args)
 
-        expected_layout = Path("tmp/myorg--model")
+        expected_layout = Path("tmp/myorg--model-modelcar")
         mock_olot_deps["pull_base_image"].assert_called_once_with(BASE_IMAGE, expected_layout, ["amd64", "arm64"])
         mock_olot_deps["oci_layers_on_top"].assert_called_once()
         assert result.image == "quay.io/repo:myorg--model-modelcar"
@@ -110,7 +110,7 @@ class TestDoBuild:
 
         mock_olot_deps["pull_base_image"].assert_not_called()
         mock_olot_deps["oci_layers_on_top"].assert_called_once()
-        assert result.oci_layout_dir == Path("tmp/myorg--model")
+        assert result.oci_layout_dir == Path("tmp/myorg--model-modelcar")
 
 
 @pytest.fixture

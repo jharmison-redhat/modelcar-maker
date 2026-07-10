@@ -216,8 +216,8 @@ def do_build(args: BuildArgs) -> BuildResult:
     """
     from olot.basics import oci_layers_on_top
 
-    normalized = normalize(args.model)
-    oci_layout_dir = Path("tmp").joinpath(normalized)
+    tag = f"{normalize(args.model)}-modelcar" if args.tag is None else args.tag
+    oci_layout_dir = Path("tmp").joinpath(tag)
 
     logger.info(f"Starting olot build for {args.model} targeting architectures: {', '.join(args.architectures)}")
 
@@ -264,8 +264,8 @@ def do_build(args: BuildArgs) -> BuildResult:
     resolved_modelcard = args.model_dir.joinpath(modelcard_source) if modelcard_source else None
 
     labels = {
-        "name": f"{normalized}-modelcar",
-        "io.k8s.display-name": f"{normalized}-modelcar",
+        "name": tag,
+        "io.k8s.display-name": tag,
         "description": (
             f"A very small RHEL image which contains the contents of huggingface.co/{args.model} downloaded to /models"
         ),
@@ -294,14 +294,15 @@ def do_build(args: BuildArgs) -> BuildResult:
         root_dir=args.model_dir,
     )
 
-    image = _image(args.model, args.repo)
+    image = _image(args.model, args.repo, tag)
     logger.info(f"Olot build complete: {image} at {oci_layout_dir}")
     return BuildResult(image=image, oci_layout_dir=oci_layout_dir)
 
 
 def do_push(args: PushArgs) -> None:
     """Push the OCI layout for the given model to the registry using oras-py."""
-    image = _image(args.model, args.repo)
+    tag = f"{normalize(args.model)}-modelcar" if args.tag is None else args.tag
+    image = _image(args.model, args.repo, tag)
     logger.info(f"Pushing OCI layout {args.oci_layout_dir} to {image}")
     rprint(f"Pushing {image}")
 
@@ -359,19 +360,20 @@ def do_push(args: PushArgs) -> None:
         raise
 
 
-def image_exists(model: str, repo: str) -> bool:
+def image_exists(model: str, repo: str, tag: str | None = None) -> bool:
     """Return whether the image for the given model and
     image registry repo exists at the remote repository."""
     try:
         from oras.container import Container
         from oras.provider import Registry
 
-        image = _image(model, repo)
+        image = _image(model, repo, tag)
         registry = Registry()
         container = Container(image, registry=registry.hostname)
         tags = registry.get_tags(container)
-        model_tag = normalize(model) + "-modelcar"
-        return model_tag in tags
+        if tag is None:
+            tag = f"{normalize(model)}-modelcar"
+        return tag in tags
     except Exception as e:
         logger.debug(f"image_exists check failed: {e}")
         return False

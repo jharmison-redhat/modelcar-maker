@@ -8,7 +8,6 @@ from typing import Optional
 class Backend(StrEnum):
     """Supported build backends."""
 
-    PODMAN = "podman"
     OLOT = "olot"
 
 
@@ -23,6 +22,7 @@ class BuildArgs:
     commit: str
     pull: bool = True
     architectures: list[str] = field(default_factory=lambda: ["amd64"])
+    tag: str | None = None
 
 
 @dataclass
@@ -44,6 +44,7 @@ class PushArgs:
     oci_layout_dir: Optional[Path] = None
     architectures: list[str] = field(default_factory=lambda: ["amd64"])
     manifest_list: Optional[str] = None
+    tag: str | None = None
 
 
 @dataclass
