@@ -23,9 +23,12 @@ while read -rd $'\0' chart; do
 done < <(find charts -type d -mindepth 1 -maxdepth 1 -print0)
 
 output='{"publish": '"${publish_oci}"', "charts": {'
-for chart in "${!published_charts[@]}"; do
-  output+='"'"$chart"'": {"path": "'"${published_charts[$chart]}"'", "version": "'"${chart_version[$chart]}"'"}, '
+for chart in "${!publish_charts[@]}"; do
+  echo "adding $chart"
+  output+='"'"$chart"'": {"path": "'"${publish_charts[$chart]}"'", "version": "'"${chart_version[$chart]}"'"}, '
 done
+echo "wip: $output"
+
 output="${output%, }}}"
 
-echo "$output"
+echo "final: $output"
