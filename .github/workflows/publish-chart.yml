@@ -54,4 +54,4 @@ jobs:
           sed -i -E 's/^name:[[:space:]]*${{ matrix.name }}$/name: ${{ matrix.name }}-chart/' "${newpath}/Chart.yaml"
 
           helm package "${newpath}"
-          helm push "${{ matrix.name }}-chart-${{ matrix.version }}.tgz" 'oci://ghcr.io/${{ github.repository }}'
+          helm push "${{ matrix.name }}-chart-${{ matrix.version }}.tgz" 'oci://ghcr.io/${{ github.repository_owner }}'
