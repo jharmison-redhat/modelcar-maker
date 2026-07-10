@@ -20,8 +20,31 @@ spec:
       restartPolicy: Never
       securityContext:
         {{- toYaml .Values.podSecurityContext | nindent 8 }}
-      {{- if not .Values.modelcar.pushAuthString }}
+      {{- if or (not .Values.modelcar.pushAuthString) (eq .Values.modelcar.image.registry "image-registry.openshift-image-registry.svc:5000") }}
       initContainers:
+        {{- if eq .Values.modelcar.image.registry "image-registry.openshift-image-registry.svc:5000" }}
+        - name: ca-bundle-maker
+          image: {{ include "modelcar-maker.image-name" . }}
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          command:
+            - /bin/sh
+          args:
+            - -c
+            - update-ca-trust
+          volumeMounts:
+            - name: service-ca
+              mountPath: /etc/pki/ca-trust/source/anchors/service-ca.crt
+              subPath: service-ca.crt
+            - name: extracted-cas
+              mountPath: /etc/pki/ca-trust/extracted
+          securityContext:
+            {{- toYaml .Values.securityContext | nindent 12 }}
+          {{- with .Values.resources }}
+          resources:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+        {{- end }}
+        {{- if not .Values.modelcar.pushAuthString }}
         - name: authfile-builder
           image: {{ include "modelcar-maker.image-name" . }}
           imagePullPolicy: {{ .Values.image.pullPolicy }}
@@ -51,6 +74,7 @@ spec:
           resources:
             {{- toYaml . | nindent 12 }}
           {{- end }}
+        {{- end }}
       {{- end }}
       containers:
         - name: modelcar-maker
@@ -76,6 +100,11 @@ spec:
             - name: push-secret
               mountPath: /modelcar-maker/.docker/config.json
               subPath: config.json
+            {{- end }}
+            {{- if eq .Values.modelcar.image.registry "image-registry.openshift-image-registry.svc:5000" }}
+            - name: extracted-cas
+              mountPath: /etc/pki/ca-trust/extracted
+              readOnly: true
             {{- end }}
           securityContext:
             {{- toYaml .Values.securityContext | nindent 12 }}
@@ -106,4 +135,11 @@ spec:
             items:
               - key: .dockerconfigjson
                 path: config.json
+        {{- end }}
+        {{- if eq .Values.modelcar.image.registry "image-registry.openshift-image-registry.svc:5000" }}
+        - name: service-ca
+          configMap:
+            name: {{ include "modelcar-maker.fullname" . }}-service-ca
+        - name: extracted-cas
+          emptyDir: {}
         {{- end }}
