@@ -49,9 +49,12 @@ def process(
     model_cleanup: bool = settings.models.cleanup,
     skip_if_exists: bool = settings.image.skip_if_exists,
     pull: bool = settings.image.pull,
+    files: list[str] = list(),
+    tag: str | None = None,
 ) -> ProcessResult:
     """Run through the entire process of downloading, packaging, and publishing a Model Car image."""
     result = ProcessResult()
+    model_settings = settings.models.get(model, dict())
 
     if isinstance(backend, str):
         try:
@@ -69,13 +72,25 @@ def process(
         from .image.olot import do_push
         from .image.olot import image_exists
 
+    if len(files) == 0:
+        model_files = model_settings.get("files")
+        if model_files is not None:
+            files = model_files
+
+    if tag is None:
+        model_tag: str | None = model_settings.get("tag")
+        if model_tag is not None:
+            tag = model_tag
+        else:
+            tag = f"{normalize(model)}-modelcar"
+
     if skip_if_exists:
-        if image_exists(model, image_repo):
+        if image_exists(model, image_repo, tag):
             # It was requested that we skip the build, and the image exists.
             # We should still check if a cleanup is called for.
             result.skipped = True
             if image_cleanup:
-                oci_layout_dir = Path("tmp").joinpath(normalize(model)) if backend is Backend.OLOT else None
+                oci_layout_dir = Path("tmp").joinpath(tag) if backend is Backend.OLOT else None
                 if do_image_rm(
                     RmArgs(model=model, repo=image_repo, oci_layout_dir=oci_layout_dir, architectures=architectures)
                 ):
@@ -86,7 +101,7 @@ def process(
             return result
 
     # Ensure that the model is downloaded before the build
-    download_dir, commit = hf_download(model)
+    download_dir, commit = hf_download(model, files=files)
     result.downloaded_to = download_dir
 
     # Build the image
@@ -99,6 +114,7 @@ def process(
             commit=commit,
             pull=pull,
             architectures=architectures,
+            tag=tag,
         )
     )
     result.image = build_result.image
@@ -113,6 +129,7 @@ def process(
                 oci_layout_dir=build_result.oci_layout_dir,
                 architectures=architectures,
                 manifest_list=build_result.manifest_list,
+                tag=tag,
             )
         )
         result.image_pushed = True

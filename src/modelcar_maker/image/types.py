@@ -22,6 +22,7 @@ class BuildArgs:
     commit: str
     pull: bool = True
     architectures: list[str] = field(default_factory=lambda: ["amd64"])
+    tag: str | None = None
 
 
 @dataclass
@@ -43,6 +44,7 @@ class PushArgs:
     oci_layout_dir: Optional[Path] = None
     architectures: list[str] = field(default_factory=lambda: ["amd64"])
     manifest_list: Optional[str] = None
+    tag: str | None = None
 
 
 @dataclass

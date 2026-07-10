@@ -23,11 +23,11 @@ def mock_olot_deps():
         patch("modelcar_maker.hf_download") as mock_hf,
         patch("modelcar_maker.cleanup") as mock_cleanup,
     ):
-        download_dir = Path("models/myorg--mymodel")
+        download_dir = Path("models/prajjwal1--bert-tiny")
         mock_hf.return_value = (download_dir, "commit123")
         mock_build.return_value = BuildResult(
-            image="quay.io/repo:myorg--mymodel-modelcar",
-            oci_layout_dir=Path("tmp/myorg--mymodel"),
+            image="quay.io/repo:prajjwal1--bert-tiny",
+            oci_layout_dir=Path("tmp/prajjwal1--bert-tiny-modelcar"),
         )
         mock_exists.return_value = False
         mock_rm.return_value = True
@@ -47,7 +47,7 @@ def mock_olot_deps():
 class TestProcessSkipOlot:
     def test_skip_when_exists(self, mock_olot_deps):
         mock_olot_deps["image_exists"].return_value = True
-        result = process("MyOrg/MyModel", "quay.io/repo", backend="olot", skip_if_exists=True)
+        result = process("prajjwal1/bert-tiny", "quay.io/repo", backend="olot", skip_if_exists=True)
 
         assert result.skipped is True
         assert result.image_built is False
@@ -56,7 +56,7 @@ class TestProcessSkipOlot:
     def test_skip_with_image_cleanup(self, mock_olot_deps):
         mock_olot_deps["image_exists"].return_value = True
         result = process(
-            "MyOrg/MyModel",
+            "prajjwal1/bert-tiny",
             "quay.io/repo",
             backend="olot",
             skip_if_exists=True,
@@ -66,14 +66,14 @@ class TestProcessSkipOlot:
         assert result.image_cleaned_up is True
         call_args = mock_olot_deps["do_image_rm"].call_args[0][0]
         assert isinstance(call_args, RmArgs)
-        assert call_args.model == "MyOrg/MyModel"
+        assert call_args.model == "prajjwal1/bert-tiny"
         assert call_args.repo == "quay.io/repo"
-        assert call_args.oci_layout_dir == Path("tmp/myorg--mymodel")
+        assert call_args.oci_layout_dir == Path("tmp/prajjwal1--bert-tiny-modelcar")
 
     def test_skip_with_model_cleanup(self, mock_olot_deps):
         mock_olot_deps["image_exists"].return_value = True
         result = process(
-            "MyOrg/MyModel",
+            "prajjwal1/bert-tiny",
             "quay.io/repo",
             backend="olot",
             skip_if_exists=True,
@@ -86,7 +86,7 @@ class TestProcessSkipOlot:
     def test_skip_no_cleanup(self, mock_olot_deps):
         mock_olot_deps["image_exists"].return_value = True
         result = process(
-            "MyOrg/MyModel",
+            "prajjwal1/bert-tiny",
             "quay.io/repo",
             backend="olot",
             skip_if_exists=True,
@@ -99,31 +99,31 @@ class TestProcessSkipOlot:
 
 class TestProcessBuildOlot:
     def test_full_build_and_push(self, mock_olot_deps):
-        result = process("MyOrg/MyModel", "quay.io/repo", backend="olot", push=True)
+        result = process("prajjwal1/bert-tiny", "quay.io/repo", backend="olot", push=True)
 
         assert result.skipped is False
         assert result.image_built is True
         assert result.image_pushed is True
-        assert result.image == "quay.io/repo:myorg--mymodel-modelcar"
+        assert result.image == "quay.io/repo:prajjwal1--bert-tiny"
         assert result.downloaded_to == mock_olot_deps["download_dir"]
 
-        mock_olot_deps["hf_download"].assert_called_once_with("MyOrg/MyModel")
+        mock_olot_deps["hf_download"].assert_called_once_with("prajjwal1/bert-tiny", files=[])
         build_call = mock_olot_deps["do_build"].call_args[0][0]
         assert isinstance(build_call, BuildArgs)
-        assert build_call.model == "MyOrg/MyModel"
+        assert build_call.model == "prajjwal1/bert-tiny"
         assert build_call.repo == "quay.io/repo"
         assert build_call.model_dir == mock_olot_deps["download_dir"]
         assert build_call.commit == "commit123"
 
         push_call = mock_olot_deps["do_push"].call_args[0][0]
         assert isinstance(push_call, PushArgs)
-        assert push_call.model == "MyOrg/MyModel"
+        assert push_call.model == "prajjwal1/bert-tiny"
         assert push_call.repo == "quay.io/repo"
         assert push_call.authfile is None
-        assert push_call.oci_layout_dir == Path("tmp/myorg--mymodel")
+        assert push_call.oci_layout_dir == Path("tmp/prajjwal1--bert-tiny-modelcar")
 
     def test_build_no_push(self, mock_olot_deps):
-        result = process("MyOrg/MyModel", "quay.io/repo", backend="olot", push=False)
+        result = process("prajjwal1/bert-tiny", "quay.io/repo", backend="olot", push=False)
 
         assert result.image_built is True
         assert result.image_pushed is False
@@ -131,14 +131,14 @@ class TestProcessBuildOlot:
 
     def test_build_with_authfile(self, mock_olot_deps):
         auth = Path("/auth.json")
-        process("MyOrg/MyModel", "quay.io/repo", backend="olot", push=True, authfile=auth)
+        process("prajjwal1/bert-tiny", "quay.io/repo", backend="olot", push=True, authfile=auth)
         push_call = mock_olot_deps["do_push"].call_args[0][0]
         assert isinstance(push_call, PushArgs)
         assert push_call.authfile == auth
 
     def test_image_cleanup(self, mock_olot_deps):
         result = process(
-            "MyOrg/MyModel",
+            "prajjwal1/bert-tiny",
             "quay.io/repo",
             backend="olot",
             push=True,
@@ -149,7 +149,7 @@ class TestProcessBuildOlot:
 
     def test_image_cleanup_no_push(self, mock_olot_deps):
         result = process(
-            "MyOrg/MyModel",
+            "prajjwal1/bert-tiny",
             "quay.io/repo",
             backend="olot",
             push=False,
@@ -160,7 +160,7 @@ class TestProcessBuildOlot:
 
     def test_model_cleanup(self, mock_olot_deps):
         result = process(
-            "MyOrg/MyModel",
+            "prajjwal1/bert-tiny",
             "quay.io/repo",
             backend="olot",
             push=False,
@@ -171,7 +171,7 @@ class TestProcessBuildOlot:
 
     def test_no_model_cleanup(self, mock_olot_deps):
         result = process(
-            "MyOrg/MyModel",
+            "prajjwal1/bert-tiny",
             "quay.io/repo",
             backend="olot",
             push=False,
@@ -182,6 +182,6 @@ class TestProcessBuildOlot:
 
     def test_skip_if_exists_false(self, mock_olot_deps):
         mock_olot_deps["image_exists"].return_value = True
-        result = process("MyOrg/MyModel", "quay.io/repo", backend="olot", skip_if_exists=False)
+        result = process("prajjwal1/bert-tiny", "quay.io/repo", backend="olot", skip_if_exists=False)
         assert result.skipped is False
         assert result.image_built is True
