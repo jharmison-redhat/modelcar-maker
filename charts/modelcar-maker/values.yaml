@@ -1,0 +1,59 @@
+nameOverride: ""
+fullnameOverride: ""
+
+huggingFace:
+  token: "" # recommended even for public models, to raise rate limits
+
+image:
+  registry: ghcr.io
+  repository: jharmison-redhat/modelcar-maker
+  tag: "" # defaults to Chart AppVersion
+  manifestHash: "" # to pin to a specific manifest hash (optional)
+  pullPolicy: IfNotPresent
+
+# Integer between 0 and 3 (higher works, does not matter)
+verbosity: 0
+
+models: [] # array of Hugging Face repo IDs as strings
+
+modelcar:
+  image:
+    registry: image-registry.openshift-image-registry.svc:5000
+    repository: '{{ .Release.Namespace }}/{{ include "modelcar-maker.image-stream-name" . }}'
+  imageStream:
+    create: true # recommended if using internal registry
+    name: ""
+  pushAuthString: "" # probably required if not using an image stream
+  skipIfExists: true # set to false to update modelcars whenever job runs
+  baseImage: registry.access.redhat.com/ubi10/ubi-micro:10.2
+  baseImagePull: true # especially important to be true if using a PVC workspace
+  architectures: # multi-arch builds are very efficient and easy to use
+    - amd64
+    - arm64
+  cleanup: false # if using emptyDir, cleanup is pointless
+
+workspace:
+  type: emptyDir # one of emptyDir or pvc
+  emptyDir: {} # you can set limits to prevent disk pressure if it's an issue
+  pvc: # workspace persistence means you can save models and images in the PVC across runs
+    size: 100Gi
+    storageClassName: gp3-csi
+    accessModes:
+      - ReadWriteOnce
+  modelCleanup: false # if using emptyDir, cleanup is pointless
+
+backoffLimit: 4
+podSecurityContext:
+  runAsNonRoot: true
+  seccompProfile:
+    type: RuntimeDefault
+securityContext:
+  capabilities:
+    drop:
+      - ALL
+resources: {}
+podAnnotations: {}
+
+serviceAccount:
+  create: true
+  name: ""

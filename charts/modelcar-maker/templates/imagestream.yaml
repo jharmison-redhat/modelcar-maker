@@ -1,0 +1,14 @@
+{{- if .Values.modelcar.imageStream.create }}
+apiVersion: image.openshift.io/v1
+kind: ImageStream
+metadata:
+  name: {{ include "modelcar-maker.image-stream-name" . }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "modelcar-maker.labels" $ | nindent 4 }}
+  annotations:
+    helm.sh/resource-policy: keep
+spec:
+  lookupPolicy:
+    local: true
+{{- end }}

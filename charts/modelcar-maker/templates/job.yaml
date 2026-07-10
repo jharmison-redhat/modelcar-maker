@@ -1,0 +1,65 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: {{ include "modelcar-maker.fullname" . }}-{{ include "modelcar-maker.config-hash" . | substr 0 7 }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "modelcar-maker.labels" . | nindent 4 }}
+  annotations:
+    helm.sh/resource-policy: keep
+spec:
+  backoffLimit: {{ .Values.backoffLimit }}
+  template:
+    metadata:
+      labels:
+        {{- include "modelcar-maker.labels" . | nindent 8 }}
+      annotations:
+        {{- include "modelcar-maker.podAnnotations" . | nindent 8 }}
+    spec:
+      serviceAccountName: {{ include "modelcar-maker.serviceAccountName" . }}
+      restartPolicy: Never
+      securityContext:
+        {{- toYaml .Values.podSecurityContext | nindent 8 }}
+      containers:
+        - name: modelcar-maker
+          image: {{ include "modelcar-maker.image-name" . }}
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          command:
+            - modelcar-maker
+          args: []
+          env:
+            - name: HOME
+              value: /home/modelcar-maker
+          envFrom:
+            - secretRef:
+                name: {{ include "modelcar-maker.fullname" . }}
+                optional: true
+          workingDir: /modelcar-maker
+          volumeMounts:
+            - name: config
+              mountPath: /etc/modelcar-maker
+            - name: workspace
+              mountPath: /modelcar-maker
+          securityContext:
+            {{- toYaml .Values.securityContext | nindent 12 }}
+          {{- with .Values.resources }}
+          resources:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+      volumes:
+        - name: config
+          configMap:
+            name: {{ include "modelcar-maker.fullname" . }}
+        - name: workspace
+          {{- if eq .Values.workspace.type "emptyDir" }}
+          {{- if .Values.workspace.emptyDir }}
+          emptyDir:
+            {{- toYaml .Values.workspace.emptyDir | nindent 12 }}
+          {{- else }}
+          emptyDir: {}
+          {{- end }}
+          {{- else if eq .Values.workspace.type "pvc" }}
+          persistentVolumeClaim:
+            claimName: {{ include "modelcar-maker.fullname" . }}
+          {{- end }}
+        {{- if and (not .Values.modelcar.imageStream.create) .Values.modelcar }}
