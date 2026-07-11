@@ -4,7 +4,9 @@ metadata:
   name: {{ include "modelcar-maker.fullname" . }}
   namespace: {{ .Release.Namespace }}
   labels:
-    {{- include "modelcar-maker.labels" $ | nindent 4 }}
+    {{- include "modelcar-maker.labels" . | nindent 4 }}
+  annotations:
+    jharmison.dev/modelcar-maker-image: {{ include "modelcar-maker.image-name" . }}
 data:
   config.toml: |
     [meta]
