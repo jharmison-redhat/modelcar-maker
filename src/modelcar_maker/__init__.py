@@ -85,7 +85,7 @@ def process(
             tag = f"{normalize(model)}-modelcar"
 
     if skip_if_exists:
-        if image_exists(model, image_repo, tag):
+        if image_exists(model, image_repo, tag, authfile):
             # It was requested that we skip the build, and the image exists.
             # We should still check if a cleanup is called for.
             result.skipped = True

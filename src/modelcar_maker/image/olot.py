@@ -4,6 +4,7 @@ import json
 import shutil
 from pathlib import Path
 
+from oras.container import Container
 from oras.layout.layout import NewLayout
 from oras.provider import Registry
 from rich import print as rprint
@@ -71,7 +72,6 @@ def _pull_base_image(base_image: str, oci_layout_dir: Path, architectures: list[
     """
     from olot.backend.oras_py import _normalize_docker_hub
     from olot.backend.oras_py import _setup_auth
-    from oras.container import Container
     from oras.defaults import default_index_media_type
     from oras.defaults import default_manifest_accepted_media_types
     from oras.defaults import default_manifest_media_type
@@ -208,6 +208,43 @@ def _pull_base_image(base_image: str, oci_layout_dir: Path, architectures: list[
     write_json(index_content, str(oci_layout_dir / oci_image_index_file))
 
 
+def _authenticated_registry(image: str, authfile: Path | None) -> tuple[Container, Registry]:
+    """Meticulously walk through auth using primitives to keep things consistent."""
+
+    registry = Registry()
+    container = Container(image)
+    registry.auth.hostname = container.registry
+
+    if authfile is not None:
+        authfile = authfile.expanduser().resolve()
+        logger.info(f"Loading auth config from {authfile}")
+
+        # Parse the authfile directly—do NOT merge with ~/.docker/config.json.
+        with open(authfile) as f:
+            auth_data = json.load(f)
+        auths = auth_data.get("auths", {})
+        matched = False
+        for host in (container.registry,):
+            entry = auths.get(host)
+            if entry:
+                auth_b64 = entry.get("auth")
+                if auth_b64:
+                    user_pass = base64.b64decode(auth_b64).decode("utf-8")
+                    username, _, password = user_pass.partition(":")
+                    registry.auth.set_basic_auth(username, password)
+                    logger.info(f"Loaded credentials for {host}")
+                    matched = True
+                    break
+        if not matched:
+            logger.info(f"No {container.registry} entry in {authfile}, relying on default Docker config")
+            registry.auth.load_configs(container)
+    else:
+        logger.info("No authfile provided, relying on default Docker config")
+        registry.auth.load_configs(container)
+
+    return (container, registry)
+
+
 def do_build(args: BuildArgs) -> BuildResult:
     """Build an OCI image for the given model using olot.
 
@@ -301,47 +338,21 @@ def do_build(args: BuildArgs) -> BuildResult:
 
 def do_push(args: PushArgs) -> None:
     """Push the OCI layout for the given model to the registry using oras-py."""
-    tag = f"{normalize(args.model)}-modelcar" if args.tag is None else args.tag
-    image = _image(args.model, args.repo, tag)
-    logger.info(f"Pushing OCI layout {args.oci_layout_dir} to {image}")
-    rprint(f"Pushing {image}")
 
     if args.oci_layout_dir is None:
         raise RuntimeError("oci_layout_dir is required for olot push")
 
-    from oras.container import Container
+    tag = f"{normalize(args.model)}-modelcar" if args.tag is None else args.tag
+    image = _image(args.model, args.repo, tag)
+
+    logger.info(f"Pushing OCI layout {args.oci_layout_dir} to {image}")
+    rprint(f"Pushing {image}")
 
     registry = Registry()
     container = Container(image)
     registry.auth.hostname = container.registry
 
-    if args.authfile is not None:
-        authfile = str(args.authfile.expanduser().resolve())
-        logger.info(f"Loading auth config from {authfile}")
-
-        # Parse the authfile directly—do NOT merge with ~/.docker/config.json.
-        with open(authfile) as f:
-            auth_data = json.load(f)
-        auths = auth_data.get("auths", {})
-        matched = False
-        for host in (container.registry,):
-            entry = auths.get(host)
-            if entry:
-                auth_b64 = entry.get("auth")
-                if auth_b64:
-                    user_pass = base64.b64decode(auth_b64).decode("utf-8")
-                    username, _, password = user_pass.partition(":")
-                    registry.auth.set_basic_auth(username, password)
-                    logger.info(f"Loaded credentials for {host}")
-                    matched = True
-                    break
-        if not matched:
-            logger.info(f"No {container.registry} entry in {authfile}, relying on default Docker config")
-            registry.auth.load_configs(container)
-    else:
-        logger.info("No authfile provided, relying on default Docker config")
-        registry.auth.load_configs(container)
-
+    container, registry = _authenticated_registry(image, args.authfile)
     try:
         layout = NewLayout(str(args.oci_layout_dir))
         layout.push_to_registry(provider=registry, target=image, tag="latest")
@@ -360,17 +371,14 @@ def do_push(args: PushArgs) -> None:
         raise
 
 
-def image_exists(model: str, repo: str, tag: str | None = None) -> bool:
+def image_exists(model: str, repo: str, tag: str | None = None, authfile: Path | None = None) -> bool:
     """Return whether the image for the given model and
     image registry repo exists at the remote repository."""
     try:
-        from oras.container import Container
-        from oras.provider import Registry
-
         image = _image(model, repo, tag)
         logger.debug(f"Checking for {image}")
-        registry = Registry()
-        container = Container(image, registry=registry.hostname)
+        container, registry = _authenticated_registry(image, authfile)
+
         tags = registry.get_tags(container)
         logger.debug(f"Found: {tags}")
         if tag is None:

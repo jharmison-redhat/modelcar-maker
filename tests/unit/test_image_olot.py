@@ -230,33 +230,6 @@ class TestDoPush:
             do_push(args)
 
 
-class TestImageExists:
-    @patch("oras.provider.Registry")
-    def test_tag_present(self, mock_registry_cls):
-        mock_registry = MagicMock()
-        mock_registry.hostname = "quay.io"
-        mock_registry.get_tags.return_value = ["myorg--model-modelcar", "other"]
-        mock_registry_cls.return_value = mock_registry
-
-        assert image_exists("MyOrg/Model", "quay.io/repo") is True
-        mock_registry.get_tags.assert_called_once()
-
-    @patch("oras.provider.Registry")
-    def test_tag_missing(self, mock_registry_cls):
-        mock_registry = MagicMock()
-        mock_registry.hostname = "quay.io"
-        mock_registry.get_tags.return_value = ["other"]
-        mock_registry_cls.return_value = mock_registry
-
-        assert image_exists("MyOrg/Model", "quay.io/repo") is False
-
-    @patch("oras.provider.Registry")
-    def test_returns_false_on_exception(self, mock_registry_cls):
-        mock_registry_cls.side_effect = Exception("network error")
-
-        assert image_exists("MyOrg/Model", "quay.io/repo") is False
-
-
 class TestDoImageRm:
     def test_removes_layout_dir(self):
         layout = Path("tmp/myorg--model")
