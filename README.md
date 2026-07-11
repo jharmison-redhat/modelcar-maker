@@ -5,7 +5,7 @@ use with KServe as [Modelcar images](https://kserve.github.io/website/docs/model
 
 ## Install
 
-Requires Python 3.11+.
+Requires Python 3.11+ and skopeo available in `$PATH`
 
 ```bash
 pip install modelcar-maker
@@ -24,17 +24,15 @@ modelcar-maker [OPTIONS] [MODEL]
 | `--registry`                               | Registry for the output image. Default: `quay.io`.                                                                                                             |
 | `-r`, `--repository`                       | Repository within the registry. Default: `jharmison/models`.                                                                                                   |
 | `-t`, `--tag`                              | The tag to push with, otherwise build from normalized model name.                                                                                              |
-| `--backend`                                | Build backend. Default: `olot`.                                                                                                                                |
 | `--base-image`                             | Base OCI image. Default: `registry.access.redhat.com/ubi10/ubi-micro:10.2`.                                                                                    |
-| `--arch`                                   | Target architecture(s). Repeat for multiple. Default: `amd64`, `arm64`.                                                                                        |
 | `--pull` / `--no-pull`                     | Pull base image if a newer version is available. Default: `--pull`.                                                                                            |
 | `--push` / `--no-push`                     | Push the image after building. Default: `--push`.                                                                                                              |
-| `-a`, `--authfile`                         | Path to `.docker/config.json` style authfile for registry push.                                                                                                |
-| `--image-clean-up` / `--no-image-clean-up` | Remove local container image after push. Default: off.                                                                                                         |
-| `--model-clean-up` / `--no-model-clean-up` | Remove downloaded model files after build. Default: off.                                                                                                       |
-| `--skip-if-exists` / `--no-skip-if-exists` | Skip if the tag already exists at the registry. Default: on.                                                                                                   |
-| `-v`                                       | Increase logging verbosity. Repeat for more.                                                                                                                   |
-| `-V`                                       | Print version and exit.                                                                                                                                        |
+| `-a`, `--authfile`                         | Path to skopeo-compatible authfile for registry push (used on push, pull, and inspect actions for `skopeo`, otherwise inherits default behavior).              |
+| `--image-clean-up` / `--no-image-clean-up` | Remove local container image after push. Default: `--no-image-clean-up`.                                                                                       |
+| `--model-clean-up` / `--no-model-clean-up` | Remove downloaded model files after build. Default: `--no-model-clean-up`.                                                                                     |
+| `--skip-if-exists` / `--no-skip-if-exists` | Skip if the tag already exists at the registry. Default: `--skip-if-exists`.                                                                                   |
+| `-v`, `--verbose`                          | Increase logging verbosity. Repeat for more.                                                                                                                   |
+| `-V`, `--version`                          | Print version and exit.                                                                                                                                        |
 
 **Image tag format:** `{registry}/{repository}/{specified tag or normalized-model}-modelcar`
 
@@ -51,8 +49,8 @@ modelcar-maker meta-llama/Llama-3.2-3B-Instruct
 # Build locally without pushing
 modelcar-maker BAAI/bge-large-en-v1.5 --no-push
 
-# Explicit multi-arch build with cleanup
-modelcar-maker mistralai/Mistral-7B --arch amd64 --arch arm64 --image-clean-up --model-clean-up
+# Build with cleanup
+modelcar-maker mistralai/Mistral-7B --image-clean-up --model-clean-up
 ```
 
 ## Configuration
@@ -86,8 +84,6 @@ section of the config. This allows mapping tags and file lists to specific model
 [image]
 registry = "quay.io"
 repository = "myorg/models"
-push = true
-architectures = ["amd64"]
 
 [models]
 default = [
