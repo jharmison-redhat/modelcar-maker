@@ -16,7 +16,9 @@ jobs:
         with:
           python-version: "3.12"
       - run: python -m pip install tox
-      - run: tox run -e py312
+      - run: |
+          echo '{}' > "$REGISTRY_AUTH_FILE"
+          tox run -e py312
         env:
           REGISTRY_AUTH_FILE: ${{ github.workspace }}/config.json
 
