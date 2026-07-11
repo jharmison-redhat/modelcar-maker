@@ -4,6 +4,7 @@ from functools import cached_property
 from pathlib import Path
 from typing import Optional
 import hashlib
+import datetime
 
 from olot.backend.skopeo import skopeo_inspect
 from olot.backend.skopeo import skopeo_pull
@@ -11,6 +12,7 @@ from olot.backend.skopeo import skopeo_push
 from olot.basics import oci_layers_on_top
 from pydantic import BaseModel
 
+from ..__version__ import version as modelcar_maker_version
 from ..model import Model
 from ..util import cleanup
 from ..util import logger
@@ -54,7 +56,14 @@ class ModelcarImage(BaseModel):
         if self.model.commit is None:
             raise RuntimeError(f"Model from {self.model.repo_id} was not downloaded (or updated), no commit available")
 
-        return dict(tag=self.normalized, repo_id=self.model.repo_id, commit=self.model.commit)
+        datetime_utc = datetime.datetime.now(datetime.UTC).isoformat()
+        return dict(
+            tag=self.normalized,
+            repo_id=self.model.repo_id,
+            commit=self.model.commit,
+            datetime_utc=datetime_utc,
+            modelcar_maker_version=modelcar_maker_version,
+        )
 
     def exists_local(self) -> bool:
         """Whether the OCI layout exists and is populated at all (does not guarantee models in it)"""
