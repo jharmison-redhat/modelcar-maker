@@ -23,4 +23,16 @@ data:
 
     [models]
     cleanup = {{ toToml .Values.workspace.modelCleanup }}
-    default = {{ toToml .Values.models }}
+    {{- $models := list }}
+    {{- range $model := .Values.models }}
+    {{- with $model.repo }}
+    {{- $models = append $models . }}
+    {{- end }}
+    {{- with $model.files }}
+    {{ quote $model.repo }}.files = {{ toToml . }}
+    {{- end }}
+    {{- with $model.tag }}
+    {{ quote $model.repo }}.tag = {{ quote . }}
+    {{- end }}
+    {{- end }}
+    default = {{ toToml $models }}

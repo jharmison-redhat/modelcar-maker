@@ -14,7 +14,12 @@ image:
 # Integer between 0 and 3 (higher works, does not matter)
 verbosity: 0
 
-models: [] # array of Hugging Face repo IDs as strings
+models: [] # array of Hugging Face repo IDs, modelcar-maker settings for each model, etc.
+# - repo: unsloth/Qwen3.5-9B-MTP-GGUF
+#   files:
+#     - README.md
+#     - Qwen3.5-9B-Q4_K_S.gguf
+#   tag: unsloth--qwen3_5-9b-q4_k_s-modelcar
 
 modelcar:
   image:
