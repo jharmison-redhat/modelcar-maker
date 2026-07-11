@@ -152,6 +152,8 @@ def build(
         if len(settings.models.default) < 1:
             ctx.fail("No repo_id provided, default models list is empty")
         models = settings.models.default
+        if tag is not None and len(models) > 1:
+            ctx.fail(f"Specifying a single tag ({tag}) with multiple models ({models}) is invalid")
         logger.debug(f"Using config default models instead of specified ({models})")
     else:
         models = [repo_id]
