@@ -32,10 +32,8 @@ modelcar:
   skipIfExists: true # set to false to update modelcars whenever job runs
   baseImage: registry.access.redhat.com/ubi10/ubi-micro:10.2
   baseImagePull: true # especially important to be true if using a PVC workspace
-  architectures: # multi-arch builds are very efficient and easy to use
-    - amd64
-    - arm64
-  cleanup: false # if using emptyDir, cleanup is pointless
+  cleanup: true # cleanup happens between models, so for many models this helps (but is pointless with few/small)
+  maintainer: James Harmison <jharmiso@redhat.com>
 
 workspace:
   type: emptyDir # one of emptyDir or pvc
@@ -45,7 +43,7 @@ workspace:
     storageClassName: ""
     accessModes:
       - ReadWriteOnce
-  modelCleanup: false # if using emptyDir, cleanup is pointless
+  modelCleanup: true # cleanup happens between models, so for many models this helps (but is pointless with few/small)
 
 backoffLimit: 4
 podSecurityContext:

@@ -16,12 +16,32 @@ data:
     registry = {{ quote .Values.modelcar.image.registry }}
     repository = {{ tpl .Values.modelcar.image.repository . | quote}}
     base_image = {{ quote .Values.modelcar.baseImage }}
-    backend = "olot"
-    architectures = {{ toToml .Values.modelcar.architectures }}
-    push = true
     cleanup = {{ toToml .Values.modelcar.cleanup }}
     skip_if_exists = {{ toToml .Values.modelcar.skipIfExists }}
+    push = true # this is the whole point with the chart
     pull = {{ toToml .Values.modelcar.baseImagePull }}
+
+    [image.labels]
+    # Note that only a subset of substitutions are rendered. They are all used in the below defaults.
+    name = "{tag}"
+    "io.k8s.display-name" = "{tag}"
+    description = "A very small RHEL image which contains the contents of huggingface.co/{repo_id} downloaded to /models"
+    "io.k8s.description" = "A very small RHEL image which contains the contents of huggingface.co/{repo_id} downloaded to /models"
+    maintainer = {{ quote .Values.modelcar.maintainer }}
+    release = "1"
+    summary = "{repo_id} model car image"
+    url = "https://github.com/jharmison-redhat/modelcar-maker"
+    vcs-ref = "{modelcar_maker_version}"
+    "org.opencontainers.image.revision" = "{modelcar_maker_version}"
+    "org.opencontainers.image.created" = "{datetime_utc}"
+    build-date = "{datetime_utc}"
+    "model.name" = "{repo_id}"
+    "model.commit" = "{commit}"
+
+    [image.annotations]
+    "org.opencontainers.image.source" = "https://github.com/jharmison-redhat/modelcar-maker"
+    "org.opencontainers.image.revision" = "{modelcar_maker_version}"
+    "org.opencontainers.image.created" = "{datetime_utc}"
 
     [models]
     cleanup = {{ toToml .Values.workspace.modelCleanup }}
