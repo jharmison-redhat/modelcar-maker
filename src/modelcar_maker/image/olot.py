@@ -368,12 +368,16 @@ def image_exists(model: str, repo: str, tag: str | None = None) -> bool:
         from oras.provider import Registry
 
         image = _image(model, repo, tag)
+        logger.debug(f"Checking for {image}")
         registry = Registry()
         container = Container(image, registry=registry.hostname)
         tags = registry.get_tags(container)
+        logger.debug(f"Found: {tags}")
         if tag is None:
             tag = f"{normalize(model)}-modelcar"
-        return tag in tags
+        found = tag in tags
+        logger.debug(f"Tag identified: {found}")
+        return found
     except Exception as e:
         logger.debug(f"image_exists check failed: {e}")
         return False
