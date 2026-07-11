@@ -20,7 +20,7 @@ spec:
       restartPolicy: Never
       securityContext:
         {{- toYaml .Values.podSecurityContext | nindent 8 }}
-      {{- if or (not .Values.modelcar.pushAuthString) (eq .Values.modelcar.image.registry "image-registry.openshift-image-registry.svc:5000") }}
+      {{- if or (not .Values.modelcar.dockerConfigJson) (eq .Values.modelcar.image.registry "image-registry.openshift-image-registry.svc:5000") }}
       initContainers:
         {{- if eq .Values.modelcar.image.registry "image-registry.openshift-image-registry.svc:5000" }}
         - name: ca-bundle-maker
@@ -44,7 +44,7 @@ spec:
             {{- toYaml . | nindent 12 }}
           {{- end }}
         {{- end }}
-        {{- if not .Values.modelcar.pushAuthString }}
+        {{- if not .Values.modelcar.dockerConfigJson }}
         - name: authfile-builder
           image: {{ include "modelcar-maker.image-name" . }}
           imagePullPolicy: {{ .Values.image.pullPolicy }}
@@ -98,7 +98,7 @@ spec:
               mountPath: /etc/modelcar-maker
             - name: workspace
               mountPath: /modelcar-maker
-            {{- if .Values.modelcar.pushAuthString }}
+            {{- if .Values.modelcar.dockerConfigJson }}
             - name: push-secret
               mountPath: /modelcar-maker/.docker/config.json
               subPath: config.json
@@ -130,7 +130,7 @@ spec:
           persistentVolumeClaim:
             claimName: {{ include "modelcar-maker.fullname" . }}
           {{- end }}
-        {{- if .Values.modelcar.pushAuthString }}
+        {{- if .Values.modelcar.dockerConfigJson }}
         - name: push-secret
           secret:
             secretName: {{ include "modelcar-maker.fullname" . }}-push

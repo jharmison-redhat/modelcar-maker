@@ -6,4 +6,11 @@ modelcar:
     repository: jharmison/models
   imageStream:
     create: false
-  pushAuthString: ZmFrZXVzZXI6ZmFrZXBhc3N3b3Jk
+  dockerConfigJson: |
+    {
+      "auths": {
+        "quay.io": {
+          "auth": "ZmFrZXVzZXI6ZmFrZXBhc3N3b3Jk"
+        }
+      }
+    }

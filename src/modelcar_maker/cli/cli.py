@@ -2,11 +2,14 @@ from pathlib import Path
 from typing import Optional
 
 import typer
+from pydantic import BaseModel
 from rich import print as rprint
 from typing_extensions import Annotated
 
-from .. import process
-from ..image.types import Backend
+from ..image import BaseImage
+from ..image import ModelcarImage
+from ..image import Skopeo
+from ..model import Model
 from ..util import make_logger
 from ..util import settings
 
@@ -29,9 +32,11 @@ cli = typer.Typer(
 @cli.command()
 def build(
     ctx: typer.Context,
-    model: Annotated[
+    repo_id: Annotated[
         Optional[str],
-        typer.Argument(help="The model to download (otherwise ensure all defaults are downloaded)"),
+        typer.Argument(
+            help="The Hugging Face repository ID to download (otherwise ensure all defaults are downloaded)"
+        ),
     ] = None,
     files: Annotated[
         list[str],
@@ -64,13 +69,6 @@ def build(
             help="The explicit tag to set, instead of auto-detecting per model",
         ),
     ] = None,
-    backend: Annotated[
-        Backend,
-        typer.Option(
-            "--backend",
-            help="Build backend to use: olot (default) is only supported",
-        ),
-    ] = Backend(settings.image.backend),
     base_image: Annotated[
         str,
         typer.Option(
@@ -78,13 +76,6 @@ def build(
             help="Base image to use for the modelcar (applies to both backends)",
         ),
     ] = settings.image.base_image,
-    arch: Annotated[
-        list[str],
-        typer.Option(
-            "--arch",
-            help="Target architecture(s) to build for (repeat for multiple)",
-        ),
-    ] = settings.image.architectures,
     pull: Annotated[
         bool,
         typer.Option(
@@ -155,41 +146,72 @@ def build(
 
     logger = make_logger(verbose)
     image_repo = f"{registry}/{repository}"
-    logger.debug(f"Backend: {backend}, Architectures: {arch}, Push {image_repo}: {push}")
-    if model is None:
+    logger.debug(f"Push {image_repo}: {push}")
+    logger.debug(f"Specified repo_id: {repo_id}")
+    if repo_id is None:
         if not isinstance(settings.models.default, list):
             ctx.fail(f"Default models should be a list, not {type(settings.models.default)}")
         if len(settings.models.default) < 1:
-            ctx.fail("No model provided, default models list is empty")
+            ctx.fail("No repo_id provided, default models list is empty")
         models = settings.models.default
+        if tag is not None and len(models) > 1:
+            ctx.fail(f"Specifying a single tag ({tag}) with multiple models ({models}) is invalid")
+        logger.debug(f"Using config default models instead of specified ({models})")
     else:
-        models = [model]
+        models = [repo_id]
+        logger.debug(f"Building single specified model ({repo_id})")
 
-    for model in models:
-        result = process(
-            str(model),
-            image_repo,
-            files=files,
-            tag=tag,
-            backend=backend,
-            base_image=base_image,
-            architectures=arch,
+    for repo_id in models:
+        rprint(f"Processing {repo_id}")
+        if len(files) == 0:
+            files = settings.models.get(repo_id, {}).get("files", [])
+            logger.debug(f"No files specified on command line, using {files} from config")
+        model = Model(repo_id=repo_id, files=files)
+        if tag is None:
+            tag = settings.models.get(repo_id, {}).get("tag")
+            if tag is not None:
+                logger.debug(f"No tag specified on command line, using {tag} from config")
+            else:
+                logger.debug("Using normalized repo_id for tag")
+        skopeo = Skopeo(
             authfile=authfile,
-            push=push,
-            image_cleanup=image_cleanup,
-            model_cleanup=model_cleanup,
-            skip_if_exists=skip_if_exists,
-            pull=pull,
         )
-        cleanup_str = f"Cleanup: {'✅' if result.image_cleaned_up else '❌'} Image, {'✅' if result.model_cleaned_up else '❌'} Model"
+        base = BaseImage(
+            skopeo=skopeo,
+            tagged_image=base_image,
+            update=pull,
+        )
+        image = ModelcarImage(
+            base_image=base,
+            skopeo=skopeo,
+            model=model,
+            registry=registry,
+            repository=repository,
+            tag=tag,
+        )
 
-        if result.skipped:
-            rprint(f"{model} was skipped as it already exists at {image_repo} - {cleanup_str}.")
-        if result.image_pushed:
-            rprint(
-                f"{model} was downloaded to {result.downloaded_to}, built as {result.image}, and pushed - {cleanup_str}."
-            )
-        elif result.image_built:
-            rprint(
-                f"{model} was downloaded to {result.downloaded_to} and built as {result.image}, but not pushed - {cleanup_str}."
-            )
+        if skip_if_exists:
+            if image.exists_remote():
+                rprint(f"Skipping build of {image.tagged_image} as it exists in the registry")
+                if image_cleanup and image.exists_local():
+                    rprint(f"Cleaning up image directory: {image.layout_dir}")
+                    image.cleanup()
+                if model_cleanup and model.exists():
+                    rprint(f"Cleaning up model directory: {model.path}")
+                    model.cleanup()
+                exit(0)
+
+        rprint(f"Downloading {repo_id} to {model.path}")
+        model.download()
+        rprint(f"Building {image.tagged_image} in {image.layout_dir}")
+        image.build()
+        if push:
+            rprint(f"Pushing {image.tagged_image}")
+            image.push()
+        if image_cleanup:
+            rprint(f"Cleaning up image directory: {image.layout_dir}")
+            image.cleanup()
+        if model_cleanup:
+            rprint(f"Cleaning up model directory: {model.path}")
+            model.cleanup()
+    rprint("Done! 🎉")

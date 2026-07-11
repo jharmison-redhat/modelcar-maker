@@ -10,8 +10,8 @@ dist
 uv.lock
 
 # Preserve Containerfiles, even if not other files
-models/*/*
-!models/*/Containerfile
+models/*
+!models/.gitkeep
 
 # working directory
 tmp/*
