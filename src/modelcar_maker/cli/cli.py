@@ -168,11 +168,13 @@ def build(
             logger.debug(f"No files specified on command line, using {files} from config")
         model = Model(repo_id=repo_id, files=files)
         if tag is None:
-            tag = settings.models.get(repo_id, {}).get("tag")
-            if tag is not None:
+            model_tag = settings.models.get(repo_id, {}).get("tag")
+            if model_tag is not None:
                 logger.debug(f"No tag specified on command line, using {tag} from config")
             else:
                 logger.debug("Using normalized repo_id for tag")
+        else:
+            model_tag = tag
         skopeo = Skopeo(
             authfile=authfile,
         )
@@ -187,7 +189,7 @@ def build(
             model=model,
             registry=registry,
             repository=repository,
-            tag=tag,
+            tag=model_tag,
         )
 
         if skip_if_exists:
