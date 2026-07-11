@@ -61,16 +61,11 @@ class BaseImage(BaseModel):
         if not self.exists:
             logger.info(f"Pulling base image {self.tagged_image}")
             result = self.skopeo.pull(base_image=self.tagged_image, dest=self.path)
-        elif self.update:
-            if self.needs_update:
-                logger.warning(f"Cleaning up stale base image from cache: {self.path}")
-                cleanup(self.path)
-                logger.info(f"Pulling fresh base image {self.tagged_image}")
-                result = self.skopeo.pull(base_image=self.tagged_image, dest=self.path)
-            else:
-                logger.info(f"Up-to-date base image ({self.tagged_image}) found in {self.path}")
-        else:
-            logger.info("Base image already present (not checking up to date), skipping pull")
+        elif self.needs_update:
+            logger.warning(f"Cleaning up stale base image from cache: {self.path}")
+            cleanup(self.path)
+            logger.info(f"Pulling fresh base image {self.tagged_image}")
+            result = self.skopeo.pull(base_image=self.tagged_image, dest=self.path)
         if result is not None and result.returncode != 0:
             raise RuntimeError(f"Pull of {self.tagged_image} to {self.path} failed: {result}")
 
@@ -87,6 +82,9 @@ class BaseImage(BaseModel):
     @property
     def needs_update(self) -> bool:
         """Determines if the locally cached base image manifest differs from the remote"""
+        if not self.update and self.exists:
+            logger.debug(f"Base image is not set to update, already exists")
+            return False
         local_manifest = self.skopeo.inspect(f"oci:{self.path}:latest")
         if local_manifest is None:
             logger.debug(f"No valid manifest found in {self.path}")
@@ -173,7 +171,6 @@ class ModelcarImage(BaseModel):
         if self.exists_local():
             logger.debug(f"Before build, cleaning out existing layout at {self.layout_dir}")
             self.cleanup()
-        self.base_image.pull()
         self.base_image.copy_to(self.layout_dir)
 
         labels = {k: v.format(**self._rendered_labels) for k, v in settings.image.labels.items()}

@@ -177,6 +177,9 @@ def build(
             tagged_image=base_image,
             update=pull,
         )
+        if base.needs_update:
+            rprint(f"Downloading {base_image} to {base.path}")
+            base.pull()
         modelcar_tag = tag if tag is not None else settings.models.get(repo_id, {}).get("tag")
         logger.debug(f"Processing modelcar image for {repo_id} with explicit tag: {modelcar_tag}")
         image = ModelcarImage(
