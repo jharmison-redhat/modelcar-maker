@@ -9,6 +9,4 @@ uv.lock
 models
 tmp
 charts
-AGENTS.md
-.agents
 src/modelcar_maker.egg-info
