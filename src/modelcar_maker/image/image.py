@@ -83,7 +83,7 @@ class BaseImage(BaseModel):
     def needs_update(self) -> bool:
         """Determines if the locally cached base image manifest differs from the remote"""
         if not self.update and self.exists:
-            logger.debug(f"Base image is not set to update, already exists")
+            logger.debug("Base image is not set to update, already exists")
             return False
         local_manifest = self.skopeo.inspect(f"oci:{self.path}:latest")
         if local_manifest is None:
