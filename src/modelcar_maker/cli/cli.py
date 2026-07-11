@@ -163,18 +163,12 @@ def build(
     logger.info(f"Processing the following model repo_id list: {models}")
     for repo_id in models:
         rprint(f"Processing {repo_id}")
-        if len(files) == 0:
-            files = settings.models.get(repo_id, {}).get("files", [])
-            logger.debug(f"No files specified on command line, using {files} from config")
-        model = Model(repo_id=repo_id, files=files)
-        if tag is None:
-            model_tag = settings.models.get(repo_id, {}).get("tag")
-            if model_tag is not None:
-                logger.debug(f"No tag specified on command line, using {tag} from config")
-            else:
-                logger.debug("Using normalized repo_id for tag")
-        else:
-            model_tag = tag
+        model_files = files if len(files) > 0 else settings.models.get(repo_id, {}).get("files", [])
+        logger.debug(f"Processing {repo_id} with files list: {model_files}")
+        model = Model(
+            repo_id=repo_id,
+            files=model_files,
+        )
         skopeo = Skopeo(
             authfile=authfile,
         )
@@ -183,13 +177,15 @@ def build(
             tagged_image=base_image,
             update=pull,
         )
+        modelcar_tag = tag if tag is not None else settings.models.get(repo_id, {}).get("tag")
+        logger.debug(f"Processing modelcar image for {repo_id} with explicit tag: {modelcar_tag}")
         image = ModelcarImage(
             base_image=base,
             skopeo=skopeo,
             model=model,
             registry=registry,
             repository=repository,
-            tag=model_tag,
+            tag=modelcar_tag,
         )
 
         if skip_if_exists:
