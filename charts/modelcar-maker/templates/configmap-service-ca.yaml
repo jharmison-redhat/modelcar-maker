@@ -5,7 +5,7 @@ metadata:
   name: {{ include "modelcar-maker.fullname" . }}-service-ca
   namespace: {{ .Release.Namespace }}
   labels:
-    {{- include "modelcar-maker.labels" $ | nindent 4 }}
+    {{- include "modelcar-maker.labels" . | nindent 4 }}
   annotations:
     service.beta.openshift.io/inject-cabundle: "true"
 {{- end }}

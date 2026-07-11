@@ -5,7 +5,7 @@ metadata:
   name: {{ include "modelcar-maker.image-stream-name" . }}
   namespace: {{ .Release.Namespace }}
   labels:
-    {{- include "modelcar-maker.labels" $ | nindent 4 }}
+    {{- include "modelcar-maker.labels" . | nindent 4 }}
   annotations:
     helm.sh/resource-policy: keep
 spec:
