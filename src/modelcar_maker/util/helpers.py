@@ -35,6 +35,8 @@ def walk(path: Path) -> list[Path]:
 def cleanup(path: Path, skip: list[str] = []) -> bool:
     """Remove all children of the provided path, except for top-level files provided in skip."""
     changed = False
+    if not path.exists():
+        return changed
     for subpath in path.iterdir():
         if subpath.name in skip:
             continue
