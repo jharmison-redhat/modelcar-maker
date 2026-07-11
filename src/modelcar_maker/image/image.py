@@ -31,6 +31,7 @@ class Skopeo(BaseModel):
         return extra_args
 
     def pull(self, base_image: str, dest: Path) -> subprocess.CompletedProcess:
+        dest.parent.mkdir(parents=True, exist_ok=True)
         return skopeo_pull(base_image=base_image, dest=dest, **self._extra_args)
 
     def push(self, src: Path, dest: str) -> subprocess.CompletedProcess:
@@ -75,6 +76,7 @@ class BaseImage(BaseModel):
 
     def copy_to(self, dest: Path) -> None:
         logger.debug(f"Copying base image {self.tagged_image} from {self.path} to {dest}")
+        dest.parent.mkdir(parents=True, exist_ok=True)
         for item in self.path.iterdir():
             dest_item = dest / item.name
             if item.is_dir():

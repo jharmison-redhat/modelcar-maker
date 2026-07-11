@@ -32,9 +32,7 @@ class Model(BaseModel):
 
     def download(self) -> None:
         """Download a model from huggingface, either using a repo snapshot or a list of specific files."""
-        if not self.path.is_dir():
-            logger.debug(f"Creating directory at {self.path}")
-            self.path.mkdir(parents=True, exist_ok=True)
+        self.path.mkdir(parents=True, exist_ok=True)
 
         if len(self.files) == 0:
             logger.info(f"Downloading snapshot of {self.repo_id} to {self.path}")
