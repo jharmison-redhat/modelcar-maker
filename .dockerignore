@@ -2,10 +2,10 @@
 .tox
 .venv
 tests
-tox.ini
 .mypy_cache
 .pytest_cache
 uv.lock
+dist
 models
 tmp
 charts

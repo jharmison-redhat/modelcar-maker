@@ -4,14 +4,16 @@ WORKDIR /opt/app-root/src
 
 FROM base as builder
 
+USER 0
+
 RUN pip install --no-cache-dir pip-tools tox
 
-COPY --chown=1001:1001 pyproject.toml ./
+COPY pyproject.toml ./
 
 RUN pip-compile pyproject.toml && \
     pip install --no-cache-dir -r requirements.txt
 
-COPY --chown=1001:1001 ./ ./
+COPY ./ ./
 
 RUN tox -e build
 
@@ -21,9 +23,8 @@ USER 0
 
 RUN dnf -y install skopeo && dnf -y clean all
 
-COPY --from=builder /opt/app-root/src/*.whl ./
-
-RUN pip install --no-cache-dir ./*.whl
+RUN --mount=type=bind,from=builder,source=/opt/app-root/src/dist,target=/opt/app-root/src \
+    pip install --no-cache-dir ./*.whl
 
 USER 1001
 
