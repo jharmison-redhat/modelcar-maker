@@ -3,6 +3,7 @@ import subprocess
 from functools import cached_property
 from pathlib import Path
 from typing import Optional
+import hashlib
 
 from olot.backend.skopeo import skopeo_inspect
 from olot.backend.skopeo import skopeo_pull
@@ -114,21 +115,56 @@ class ModelcarImage(BaseModel):
         if self.authfile is not None and self.authfile.exists():
             extra_args["params"] = ["--authfile", str(self.authfile)]
 
-        skopeo_push(src=self.layout_dir, oci_ref=self.tagged_image, **extra_args)
+        result = skopeo_push(src=self.layout_dir, oci_ref=self.tagged_image, **extra_args)
+        if result.returncode != 0:
+            raise RuntimeError(f"Failed to push {self.tagged_image}: {result}")
+
+    def _needs_base_update(self) -> bool:
+        """Determines if the locally cached base image manifest differs from the remote"""
+        extra_args = dict()
+        if self.authfile is not None:
+            extra_args["params"] = ["--authfile", self.authfile]
+        try:
+            local_manifest = skopeo_inspect(f"oci:{self.base_path}:latest", **extra_args)
+            logger.debug(f"Found local base image manifest in cache: {local_manifest}")
+            local_digest = hashlib.sha256(local_manifest.encode("utf-8")).hexdigest()
+            logger.info(f"Locally cached base image manifest digest: {local_digest}")
+
+            remote_manifest = skopeo_inspect(f"docker://{self.base_image}", **extra_args)
+            logger.debug(f"Found remote base image manifest in registry: {remote_manifest}")
+            remote_digest = hashlib.sha256(remote_manifest.encode("utf-8")).hexdigest()
+            logger.info(f"Remote base image manifest digest: {remote_digest}")
+
+            needs_update = local_digest != remote_digest
+            if needs_update:
+                logger.debug("Not matching! Base image cache update required...")
+            return needs_update
+        except subprocess.CalledProcessError as e:
+            logger.warning(f"Unable to compare {self.base_image} to {self.base_path}")
+            logger.debug(e)
+            return True
 
     def _pull_base_image(self) -> None:
         """Pulls the base image into a cache directory to reuse for image builds"""
-        ret = 0
-        logger.info(f"Pulling base image {self.base_image}")
-        if self.pull:
-            logger.debug(f"Cleaning up {self.base_path} and pulling {self.base_image} to it")
-            cleanup(self.base_path)
-            ret = skopeo_pull(base_image=self.base_image, dest=self.base_path)
-        elif not self.base_path.joinpath("index.json").exists():
-            logger.debug(f"Pulling {self.base_image} to {self.base_path}")
-            ret = skopeo_pull(base_image=self.base_image, dest=self.base_path)
-        if ret != 0:
-            raise RuntimeError(f"Pull of {self.base_image} to {self.base_path} failed (returned {ret})")
+        result = None
+        extra_args = dict()
+        if self.authfile is not None:
+            extra_args["params"] = ["--authfile", self.authfile]
+        if not self.base_path.joinpath("index.json").exists():
+            logger.info(f"Pulling base image {self.base_image}")
+            result = skopeo_pull(base_image=self.base_image, dest=self.base_path, **extra_args)
+        elif self.pull:
+            if self._needs_base_update():
+                logger.warning(f"Cleaning up stale base image from cache: {self.base_path}")
+                cleanup(self.base_path)
+                logger.info(f"Pulling fresh base image {self.base_image}")
+                result = skopeo_pull(base_image=self.base_image, dest=self.base_path, **extra_args)
+            else:
+                logger.info(f"Up-to-date base image ({self.base_image}) found in {self.base_path}")
+        else:
+            logger.info(f"Base image already present (not checking up to date), skipping pull")
+        if result is not None and result.returncode != 0:
+            raise RuntimeError(f"Pull of {self.base_image} to {self.base_path} failed: {result}")
 
     @staticmethod
     def _should_include(file: Path) -> bool:

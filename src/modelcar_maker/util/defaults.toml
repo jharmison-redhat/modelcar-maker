@@ -8,7 +8,7 @@ base_image = "registry.access.redhat.com/ubi10/ubi-micro:10.2"
 push = true
 cleanup = false
 skip_if_exists = true
-pull = false
+pull = true
 
 [image.labels]
 name = "{tag}"
