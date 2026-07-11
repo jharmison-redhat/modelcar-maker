@@ -50,7 +50,7 @@ def build(
         str,
         typer.Option(
             "--registry",
-            help="The registry to include in the image reference",
+            help="The registry to include in the image reference (and push to)",
         ),
     ] = settings.image.registry,
     repository: Annotated[
@@ -58,7 +58,7 @@ def build(
         typer.Option(
             "-r",
             "--repository",
-            help="The repository, within the registry, to include in the image reference",
+            help="The repository, within the registry, to include in the image reference (and push to)",
         ),
     ] = settings.image.repository,
     tag: Annotated[
@@ -73,7 +73,7 @@ def build(
         str,
         typer.Option(
             "--base-image",
-            help="Base image to use for the modelcar (applies to both backends)",
+            help="Base image to use for the modelcar (needs to have a shell for KServe)",
         ),
     ] = settings.image.base_image,
     pull: Annotated[
@@ -95,28 +95,28 @@ def build(
         typer.Option(
             "-a",
             "--authfile",
-            help="The authfile to use for the push",
+            help="The authfile to use for the base pull and modelcar push (if not provided, uses skopeo default behavior)",
         ),
     ] = settings.image.get("authfile"),
     image_cleanup: Annotated[
         bool,
         typer.Option(
             "--image-clean-up/--no-image-clean-up",
-            help="Clean up the container image after push to free up space",
+            help="Clean up the container image after push (in between models)",
         ),
     ] = settings.image.cleanup,
     model_cleanup: Annotated[
         bool,
         typer.Option(
             "--model-clean-up/--no-model-clean-up",
-            help="Clean up the downloaded model images after build to free up space",
+            help="Clean up the downloaded model images after build (in between models)",
         ),
     ] = settings.models.cleanup,
     skip_if_exists: Annotated[
         bool,
         typer.Option(
             "--skip-if-exists/--no-skip-if-exists",
-            help="Skip downloading and publishing the image if it already exists",
+            help="Skip downloading, building, and pushing the image if it already exists at the remote",
         ),
     ] = settings.image.skip_if_exists,
     verbose: Annotated[
@@ -142,7 +142,8 @@ def build(
         ),
     ] = False,
 ):
-    """Modelcar Maker model download, build, and push"""
+    """Modelcar Maker: download models, build KServe Modelcar images,
+    and push them with consistent names and metadata."""
 
     logger = make_logger(verbose)
     image_repo = f"{registry}/{repository}"
