@@ -6,4 +6,12 @@ from .helpers import walk
 from .logging import logger
 from .logging import make_logger
 
-__all__ = ["cleanup", "logger", "make_logger", "normalize", "settings", "walk", "Truthy"]
+__all__ = [
+    "Truthy",
+    "cleanup",
+    "logger",
+    "make_logger",
+    "normalize",
+    "settings",
+    "walk",
+]

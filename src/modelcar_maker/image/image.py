@@ -20,6 +20,91 @@ from ..util import normalize
 from ..util import settings
 
 
+class Skopeo(BaseModel):
+    authfile: Optional[Path] = None
+
+    @property
+    def _extra_args(self) -> dict[str, list[str]]:
+        extra_args = dict()
+        if self.authfile is not None:
+            extra_args["params"] = ["--authfile", str(self.authfile)]
+        return extra_args
+
+    def pull(self, base_image: str, dest: Path) -> subprocess.CompletedProcess:
+        return skopeo_pull(base_image=base_image, dest=dest, **self._extra_args)
+
+    def push(self, src: Path, dest: str) -> subprocess.CompletedProcess:
+        return skopeo_push(src=src, oci_ref=dest, **self._extra_args)
+
+    def inspect(self, reference: str) -> Optional[str]:
+        try:
+            return skopeo_inspect(skopeo_ref=reference, **self._extra_args)
+        except subprocess.CalledProcessError as e:
+            logger.warning(f"Unable to inspect: {reference}")
+            return None
+
+
+class BaseImage(BaseModel):
+    tagged_image: str
+    skopeo: Skopeo
+    update: bool
+    path: Path = Path("tmp/base")
+
+    @property
+    def exists(self) -> bool:
+        return self.path.joinpath("index.json").exists()
+
+    def pull(self) -> None:
+        """Pulls the base image into a cache directory to reuse for image builds"""
+        result = None
+        if not self.exists:
+            logger.info(f"Pulling base image {self.tagged_image}")
+            result = self.skopeo.pull(base_image=self.tagged_image, dest=self.path)
+        elif self.update:
+            if self.needs_update:
+                logger.warning(f"Cleaning up stale base image from cache: {self.path}")
+                cleanup(self.path)
+                logger.info(f"Pulling fresh base image {self.tagged_image}")
+                result = self.skopeo.pull(base_image=self.tagged_image, dest=self.path)
+            else:
+                logger.info(f"Up-to-date base image ({self.tagged_image}) found in {self.path}")
+        else:
+            logger.info("Base image already present (not checking up to date), skipping pull")
+        if result is not None and result.returncode != 0:
+            raise RuntimeError(f"Pull of {self.tagged_image} to {self.path} failed: {result}")
+
+    def copy_to(self, dest: Path) -> None:
+        logger.debug(f"Copying base image {self.tagged_image} from {self.path} to {dest}")
+        for item in self.path.iterdir():
+            dest_item = dest / item.name
+            if item.is_dir():
+                shutil.copytree(item, dest_item)
+            else:
+                shutil.copy2(item, dest_item)
+
+    @property
+    def needs_update(self) -> bool:
+        """Determines if the locally cached base image manifest differs from the remote"""
+        local_manifest = self.skopeo.inspect(f"oci:{self.path}:latest")
+        if local_manifest is None:
+            logger.debug(f"No valid manifest found in {self.path}")
+            return True
+        local_digest = hashlib.sha256(local_manifest.encode("utf-8")).hexdigest()
+        logger.info(f"Locally cached base image manifest digest: {local_digest}")
+
+        remote_manifest = self.skopeo.inspect(f"docker://{self.tagged_image}")
+        if remote_manifest is None:
+            logger.error("Unable to read remote manifest, attempting pull but expecting failure")
+            return True
+        remote_digest = hashlib.sha256(remote_manifest.encode("utf-8")).hexdigest()
+        logger.info(f"Remote base image manifest digest: {remote_digest}")
+
+        needs_update = local_digest != remote_digest
+        if needs_update:
+            logger.debug("Not matching! Base image cache update required...")
+        return needs_update
+
+
 class ModelcarImage(BaseModel):
     """Represents a complete Modelcar Image, including methods to build, push, and clean them up."""
 
@@ -126,88 +211,3 @@ class ModelcarImage(BaseModel):
         if file.name == "consolidated.safetensors":
             return False
         return True
-
-
-class BaseImage(BaseModel):
-    tagged_image: str
-    skopeo: Skopeo
-    update: bool
-    path: Path = Path("tmp/base")
-
-    @property
-    def exists(self) -> bool:
-        return self.path.joinpath("index.json").exists()
-
-    def pull(self) -> None:
-        """Pulls the base image into a cache directory to reuse for image builds"""
-        result = None
-        if not self.exists:
-            logger.info(f"Pulling base image {self.tagged_image}")
-            result = self.skopeo.pull(base_image=self.tagged_image, dest=self.path)
-        elif self.update:
-            if self.needs_update:
-                logger.warning(f"Cleaning up stale base image from cache: {self.path}")
-                cleanup(self.path)
-                logger.info(f"Pulling fresh base image {self.tagged_image}")
-                result = self.skopeo.pull(base_image=self.tagged_image, dest=self.path)
-            else:
-                logger.info(f"Up-to-date base image ({self.tagged_image}) found in {self.path}")
-        else:
-            logger.info("Base image already present (not checking up to date), skipping pull")
-        if result is not None and result.returncode != 0:
-            raise RuntimeError(f"Pull of {self.tagged_image} to {self.path} failed: {result}")
-
-    def copy_to(self, dest: Path) -> None:
-        logger.debug(f"Copying base image {self.tagged_image} from {self.path} to {dest}")
-        for item in self.path.iterdir():
-            dest_item = dest / item.name
-            if item.is_dir():
-                shutil.copytree(item, dest_item)
-            else:
-                shutil.copy2(item, dest_item)
-
-    @property
-    def needs_update(self) -> bool:
-        """Determines if the locally cached base image manifest differs from the remote"""
-        local_manifest = self.skopeo.inspect(f"oci:{self.path}:latest")
-        if local_manifest is None:
-            logger.debug(f"No valid manifest found in {self.path}")
-            return True
-        local_digest = hashlib.sha256(local_manifest.encode("utf-8")).hexdigest()
-        logger.info(f"Locally cached base image manifest digest: {local_digest}")
-
-        remote_manifest = self.skopeo.inspect(f"docker://{self.tagged_image}")
-        if remote_manifest is None:
-            logger.error("Unable to read remote manifest, attempting pull but expecting failure")
-            return True
-        remote_digest = hashlib.sha256(remote_manifest.encode("utf-8")).hexdigest()
-        logger.info(f"Remote base image manifest digest: {remote_digest}")
-
-        needs_update = local_digest != remote_digest
-        if needs_update:
-            logger.debug("Not matching! Base image cache update required...")
-        return needs_update
-
-
-class Skopeo(BaseModel):
-    authfile: Optional[Path] = None
-
-    @property
-    def _extra_args(self) -> dict[str, list[str]]:
-        extra_args = dict()
-        if self.authfile is not None:
-            extra_args["params"] = ["--authfile", str(self.authfile)]
-        return extra_args
-
-    def pull(self, base_image: str, dest: Path) -> subprocess.CompletedProcess:
-        return skopeo_pull(base_image=base_image, dest=dest, **self._extra_args)
-
-    def push(self, src: Path, dest: str) -> subprocess.CompletedProcess:
-        return skopeo_push(src=src, oci_ref=dest, **self._extra_args)
-
-    def inspect(self, reference: str) -> Optional[str]:
-        try:
-            return skopeo_inspect(skopeo_ref=reference, **self._extra_args)
-        except subprocess.CalledProcessError as e:
-            logger.warning(f"Unable to inspect: {reference}")
-            return None
