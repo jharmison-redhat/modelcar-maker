@@ -105,7 +105,8 @@ class ModelcarImage(BaseModel):
 
         labels = {k: v.format(**self._rendered_labels) for k, v in settings.image.labels.items()}
         logger.debug(f"Rendered labels: {labels}")
-        annotations = settings.image.annotations
+        annotations = {k: v.format(**self._rendered_labels) for k, v in settings.image.annotations.items()}
+        logger.debug(f"Rendered annotations: {annotations}")
         model_card, model_files = self.model.model_files()
         filtered_model_files = [file for file in model_files if self._should_include(file)]
 

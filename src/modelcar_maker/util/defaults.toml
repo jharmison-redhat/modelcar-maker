@@ -29,6 +29,8 @@ build-date = "{datetime_utc}"
 
 [image.annotations]
 "org.opencontainers.image.source" = "https://github.com/jharmison-redhat/modelcar-maker"
+"org.opencontainers.image.revision" = "{modelcar_maker_version}"
+"org.opencontainers.image.created" = "{datetime_utc}"
 
 [models]
 cleanup = false
