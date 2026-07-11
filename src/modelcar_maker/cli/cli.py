@@ -199,7 +199,7 @@ def build(
                 if model_cleanup and model.exists():
                     rprint(f"Cleaning up model directory: {model.path}")
                     model.cleanup()
-                exit(0)
+                continue
 
         rprint(f"Downloading {repo_id} to {model.path}")
         model.download()
