@@ -6,7 +6,9 @@ from pydantic import BaseModel
 from rich import print as rprint
 from typing_extensions import Annotated
 
+from ..image import BaseImage
 from ..image import ModelcarImage
+from ..image import Skopeo
 from ..model import Model
 from ..util import make_logger
 from ..util import settings
@@ -170,15 +172,22 @@ def build(
             if tag is not None:
                 logger.debug(f"No tag specified on command line, using {tag} from config")
             else:
-                logger.debug(f"Using normalized repo_id for tag")
+                logger.debug("Using normalized repo_id for tag")
+        skopeo = Skopeo(
+            authfile=authfile,
+        )
+        base = BaseImage(
+            skopeo=skopeo,
+            tagged_image=base_image,
+            update=pull,
+        )
         image = ModelcarImage(
-            base_image=base_image,
+            base_image=base,
+            skopeo=skopeo,
             model=model,
-            tag=tag,
-            pull=pull,
             registry=registry,
             repository=repository,
-            authfile=authfile,
+            tag=tag,
         )
 
         if skip_if_exists:
