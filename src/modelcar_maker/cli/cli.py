@@ -166,8 +166,11 @@ def build(
             logger.debug(f"No files specified on command line, using {files} from config")
         model = Model(repo_id=repo_id, files=files)
         if tag is None:
-            tag = settings.models.get(repo_id, {}).get(tag)
-            logger.debug(f"No tag specified on command line, using {tag} from config")
+            tag = settings.models.get(repo_id, {}).get("tag")
+            if tag is not None:
+                logger.debug(f"No tag specified on command line, using {tag} from config")
+            else:
+                logger.debug(f"Using normalized repo_id for tag")
         image = ModelcarImage(
             base_image=base_image,
             model=model,
