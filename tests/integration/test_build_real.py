@@ -3,6 +3,7 @@ End-to-end integration test that builds a real modelcar image using the CLI.
 """
 
 import json
+import os
 import shutil
 import subprocess
 import tempfile
@@ -47,8 +48,12 @@ def _run(cmd: list[str], check: bool = True) -> str:
 
 def _verify_image(image_tag: str, modelcard_path: str, model_name: str, normalized: str) -> None:
     """Common image verification: model contents, modelcard path, and labels."""
+    unshare = ()
+    if os.getenv("CI") is not None:
+        unshare = ("podman", "unshare")
     ls_output = _run(
         [
+            *unshare,
             "podman",
             "run",
             "--rm",
@@ -65,6 +70,7 @@ def _verify_image(image_tag: str, modelcard_path: str, model_name: str, normaliz
 
     _run(
         [
+            *unshare,
             "podman",
             "run",
             "--rm",
@@ -77,7 +83,15 @@ def _verify_image(image_tag: str, modelcard_path: str, model_name: str, normaliz
         ]
     )
 
-    inspect_output = _run(["podman", "image", "inspect", image_tag])
+    inspect_output = _run(
+        [
+            *unshare,
+            "podman",
+            "image",
+            "inspect",
+            image_tag,
+        ]
+    )
     inspect_data = json.loads(inspect_output.strip())
     labels = inspect_data[0].get("Labels", {})
 
@@ -103,7 +117,16 @@ def build_args() -> list[str]:
 def cleanup() -> Iterator[None]:
     """Ensure image and artifacts are cleaned up after each test."""
     yield
-    _run(["podman", "image", "rm", IMAGE_TAG], check=False)
+    if os.getenv("CI") is None:
+        _run(
+            [
+                "podman",
+                "image",
+                "rm",
+                IMAGE_TAG,
+            ],
+            check=False,
+        )
 
     if OLOT_LAYOUT_DIR.exists():
         shutil.rmtree(OLOT_LAYOUT_DIR, ignore_errors=True)
@@ -138,7 +161,18 @@ def test_build_real_model_no_push_olot(build_args: list[str]) -> None:
     assert modelcard.parts[-1] == EXPECTED_MODELCARD
 
     # 2. Load OCI layout to containers-storage, for running with podman
-    _run(["skopeo", "copy", f"oci:{OLOT_LAYOUT_DIR.resolve()}", f"containers-storage:{IMAGE_TAG}"])
+    unshare = ()
+    if os.getenv("CI") is not None:
+        unshare = ("podman", "unshare")
+    _run(
+        [
+            *unshare,
+            "skopeo",
+            "copy",
+            f"oci:{OLOT_LAYOUT_DIR.resolve()}",
+            f"containers-storage:{IMAGE_TAG}",
+        ]
+    )
 
     # 3. Verify image
     _verify_image(IMAGE_TAG, "/models/README.md", MODEL, NORMALIZED)
