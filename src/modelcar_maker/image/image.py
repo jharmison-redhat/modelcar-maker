@@ -158,7 +158,7 @@ class ModelcarImage(BaseModel):
         """Whether the OCI image is available at the remote registry with this tag
         (does not guarantee up to date, or models in it)"""
         manifest = self.skopeo.inspect(reference=f"docker://{self.tagged_image}")
-        logger.debug(f"Foud manifest: {manifest}")
+        logger.debug(f"Found manifest: {manifest}")
         if manifest is None:
             logger.warning(f"Remote image {self.tagged_image} could not be inspected, appears not to exist")
             return False
