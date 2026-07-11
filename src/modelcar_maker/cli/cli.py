@@ -157,11 +157,10 @@ def build(
         models = settings.models.default
         if tag is not None and len(models) > 1:
             ctx.fail(f"Specifying a single tag ({tag}) with multiple models ({models}) is invalid")
-        logger.debug(f"Using config default models instead of specified ({models})")
     else:
         models = [repo_id]
-        logger.debug(f"Building single specified model ({repo_id})")
 
+    logger.info(f"Processing the following model repo_id list: {models}")
     for repo_id in models:
         rprint(f"Processing {repo_id}")
         if len(files) == 0:
