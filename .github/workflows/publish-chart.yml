@@ -15,9 +15,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - id: checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
-          fetch-depth: 0
+          fetch-depth: 2
+          fetch-tags: true
       - id: versions
         run: .github/workflows/chart_versions.sh
         env:
@@ -37,7 +38,7 @@ jobs:
       packages: write
     steps:
       - id: checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
       - id: setup-helm
         uses: azure/setup-helm@v4
       - id: log-in
