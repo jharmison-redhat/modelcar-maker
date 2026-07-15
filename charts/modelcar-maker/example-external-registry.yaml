@@ -1,5 +1,5 @@
 models:
-  - TinyLlama/TinyLlama-1.1B-Chat-v1.0
+  - repo: TinyLlama/TinyLlama-1.1B-Chat-v1.0
 modelcar:
   image:
     registry: quay.io
