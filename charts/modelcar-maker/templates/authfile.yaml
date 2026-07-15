@@ -3,7 +3,7 @@ apiVersion: v1
 kind: Secret
 metadata:
   name: {{ include "modelcar-maker.fullname" $ }}-push
-  namespace: {{ .Release.Namespace }}
+  namespace: {{ $.Release.Namespace }}
   labels:
     {{- include "modelcar-maker.labels" $ | nindent 4 }}
 type: kubernetes.io/dockerconfigjson

@@ -1,11 +1,10 @@
 Publishing the following models:
+{{ range $model := .Values.models }}
+  https://huggingface.co/{{ $model.repo }} --> {{ include "modelcar-maker.modelcar-destination-image" (list $model $) }}
+{{- end }}
 
-{{ toYaml .Values.models }}
-
-To tags in the following repository: {{ .Values.modelcar.image.registry }}/{{ tpl .Values.modelcar.image.repository . }}
-
-For pod logs, run:
+To follow the modelcar-maker logs, run:
 
 ```
-kubectl logs -n {{ .Release.Namespace }} job/{{ include "modelcar-maker.fullname" . }}-{{ include "modelcar-maker.config-hash" . | substr 0 7 }}
+{{ if .Values.modelcar.imageStream.create }}oc{{ else }}kubectl{{ end }} logs -n {{ .Release.Namespace }} job/{{ include "modelcar-maker.fullname" . }}-{{ include "modelcar-maker.config-hash" . | substr 0 7 }} -f
 ```

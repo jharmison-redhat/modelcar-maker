@@ -99,3 +99,25 @@ Create the job image name
     {{- default .Chart.AppVersion .Values.image.tag -}}
   {{- end -}}
 {{- end -}}
+
+{{/*
+Render the normalized tag, as modelcar-maker will render it
+(called with a model as a map, with repo and optional tag keys)
+*/}}
+{{- define "modelcar-maker.normalized-tag" -}}
+{{- if .tag -}}
+  {{- .tag -}}
+{{- else -}}
+  {{- .repo | replace "/" "--" | replace "." "_" | lower -}}
+{{- end -}}
+{{- end -}}
+
+{{/*
+Render the destination image tag for a model
+(called with a tuple of $model and chart root context)
+*/}}
+{{- define "modelcar-maker.modelcar-destination-image" -}}
+{{- $model := first . -}}
+{{- $ctx := last . -}}
+{{- $ctx.Values.modelcar.image.registry }}/{{ tpl $ctx.Values.modelcar.image.repository $ctx }}:{{ include "modelcar-maker.normalized-tag" $model -}}
+{{- end -}}
