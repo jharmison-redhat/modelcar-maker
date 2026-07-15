@@ -28,6 +28,8 @@ modelcar:
   imageStream:
     create: true # recommended if using internal registry, we bind RBAC to support our ServiceAccount on this flag also
     name: ""
+    groups: # list of OpenShift Groups to be authorized to pull the model (this allows pulls from any namespace or user by default)
+      - system:authenticated
   dockerConfigJson: "" # Set to a real, skopeo-format config.json text to support pulling the base image(if you change it) and pushing the modelcar image (if not using an ImageStream)
   skipIfExists: true # set to false to update modelcars whenever job runs
   baseImage: registry.access.redhat.com/ubi10/ubi-micro:10.2

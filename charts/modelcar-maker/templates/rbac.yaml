@@ -2,7 +2,7 @@
 apiVersion: rbac.authorization.k8s.io/v1
 kind: RoleBinding
 metadata:
-  name: {{ include "modelcar-maker.fullname" . }}
+  name: {{ printf "%s-push" (include "modelcar-maker.fullname" .) | trunc 63 | trimSuffix "-" }}
   namespace: {{ .Release.Namespace }}
   labels:
     {{- include "modelcar-maker.labels" $ | nindent 4 }}
@@ -14,4 +14,20 @@ subjects:
 - kind: ServiceAccount
   name: {{ include "modelcar-maker.serviceAccountName" . }}
   namespace: {{ .Release.Namespace }}
+{{- if .Values.modelcar.imageStream.groups }}
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: {{ printf "%s-pull" (include "modelcar-maker.fullname" .) | trunc 63 | trimSuffix "-" }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "modelcar-maker.labels" $ | nindent 4 }}
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: registry-viewer
+subjects:
+  {{- toYaml .Values.modelcar.imageStream.groups | nindent 2 }}
+{{- end }}
 {{- end }}
