@@ -113,6 +113,18 @@ Render the normalized tag, as modelcar-maker will render it
 {{- end -}}
 
 {{/*
+Render the DNS-normalized name, to support creating specific objects at the
+API per-model (e.g. Data Science Connections)
+*/}}
+{{- define "modelcar-maker.modelcar-dns-normalized-name" -}}
+{{- if .tag -}}
+  {{- .tag | replace "--" "-" | replace "_" "-" | lower | trunc 63 | trimSuffix "-" -}}
+{{- else -}}
+  {{- .repo | replace "/" "-" | replace "." "-" | lower | trunc 63 | trimSuffix "-" -}}
+{{- end -}}
+{{- end -}}
+
+{{/*
 Render the destination image tag for a model
 (called with a tuple of $model and chart root context)
 */}}

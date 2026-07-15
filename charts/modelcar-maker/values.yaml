@@ -35,6 +35,10 @@ modelcar:
   cleanup: true # cleanup happens between models, so for many models this helps (but is pointless with few/small)
   maintainer: James Harmison <jharmiso@redhat.com>
 
+dataScienceConnections: # for use with OpenShift AI Model Serving
+  create: true
+  namespace: "" # defaults to the chart release namespace
+
 workspace:
   type: emptyDir # one of emptyDir or pvc
   emptyDir: {} # you can set limits to prevent disk pressure if it's an issue
