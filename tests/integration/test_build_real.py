@@ -110,6 +110,7 @@ def build_args() -> list[str]:
         "localhost",
         "--repository",
         "modelcar-maker-integration-test",
+        "-vvv",
     ]
 
 
