@@ -108,7 +108,7 @@ Render the normalized tag, as modelcar-maker will render it
 {{- if .tag -}}
   {{- .tag -}}
 {{- else -}}
-  {{- .repo | replace "/" "--" | replace "." "_" | lower -}}
+  {{- printf "%s-modelcar" .repo | replace "/" "--" | replace "." "_" | lower -}}
 {{- end -}}
 {{- end -}}
 
@@ -120,7 +120,7 @@ API per-model (e.g. Data Science Connections)
 {{- if .tag -}}
   {{- .tag | replace "--" "-" | replace "_" "-" | lower | trunc 63 | trimSuffix "-" -}}
 {{- else -}}
-  {{- .repo | replace "/" "-" | replace "." "-" | lower | trunc 63 | trimSuffix "-" -}}
+  {{- printf "%s-modelcar" .repo | replace "/" "-" | replace "." "-" | lower | trunc 63 | trimSuffix "-" -}}
 {{- end -}}
 {{- end -}}
 
