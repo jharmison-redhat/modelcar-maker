@@ -1,7 +1,8 @@
 # modelcar-maker
 
-Downloads Hugging Face models and packages them as minimal OCI container images with one file per layer. Designed for
-use with KServe as [Modelcar images](https://kserve.github.io/website/docs/model-serving/storage/providers/oci).
+Downloads Hugging Face models and packages them as minimal OCI container images with one file per layer. Builds on top
+of [olot](https://github.com/containers/olot) with a full publishing workflow. Designed for use with KServe as
+[Modelcar images](https://kserve.github.io/website/docs/model-serving/storage/providers/oci).
 
 ## Install
 
