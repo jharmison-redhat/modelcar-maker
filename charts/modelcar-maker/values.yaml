@@ -41,6 +41,14 @@ dataScienceConnections: # for use with OpenShift AI Model Serving
   create: true
   namespace: "" # defaults to the chart release namespace
 
+imagePuller:
+  create: false
+  updateStrategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 100%
+  nodeSelector: {}
+
 workspace:
   type: emptyDir # one of emptyDir or pvc
   emptyDir: {} # you can set limits to prevent disk pressure if it's an issue

@@ -1,0 +1,46 @@
+{{- if .Values.imagePuller.create }}
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: {{ printf "%s-image-puller" (include "modelcar-maker.fullname" .) | trunc 63 | trimSuffix "-" }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "modelcar-maker.labels" . | nindent 4 }}
+spec:
+  selector:
+    matchLabels:
+      {{- include "modelcar-maker.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: image-puller
+  updateStrategy:
+    {{- toYaml .Values.imagePuller.updateStrategy | nindent 4 }}
+  template:
+    metadata:
+      labels:
+        {{- include "modelcar-maker.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: image-puller
+    spec:
+      {{- with .Values.imagePuller.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      restartPolicy: Always
+      terminationGracePeriodSeconds: 0
+      containers:
+      {{- range $model := .Values.models }}
+        - name: {{ include "modelcar-maker.modelcar-dns-normalized-name" $model }}
+          image: {{ include "modelcar-maker.modelcar-destination-image" (list $model $) }}
+          command:
+            - /bin/sleep
+          args:
+            - infinity
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
+      {{- end }}
+      securityContext:
+        runAsNonRoot: true
+        seccompProfile:
+          type: RuntimeDefault
+{{- end }}
