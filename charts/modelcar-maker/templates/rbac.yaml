@@ -28,6 +28,10 @@ roleRef:
   kind: ClusterRole
   name: registry-viewer
 subjects:
-  {{- toYaml .Values.modelcar.imageStream.groups | nindent 2 }}
+  {{- range .Values.modelcar.imageStream.groups }}
+  - apiGroup: rbac.authorization.k8s.io
+    kind: Group
+    name: {{ . }}
+  {{- end }}
 {{- end }}
 {{- end }}
