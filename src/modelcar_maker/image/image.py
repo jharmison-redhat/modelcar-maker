@@ -74,6 +74,7 @@ class BaseImage(BaseModel):
         dest.parent.mkdir(parents=True, exist_ok=True)
         for item in self.path.iterdir():
             dest_item = dest / item.name
+            logger.debug(f"{item} -> {dest_item}")
             if item.is_dir():
                 shutil.copytree(item, dest_item)
             else:
