@@ -71,7 +71,7 @@ class BaseImage(BaseModel):
 
     def copy_to(self, dest: Path) -> None:
         logger.debug(f"Copying base image {self.tagged_image} from {self.path} to {dest}")
-        dest.parent.mkdir(parents=True, exist_ok=True)
+        dest.mkdir(parents=True, exist_ok=True)
         for item in self.path.iterdir():
             dest_item = dest / item.name
             logger.debug(f"{item} -> {dest_item}")
