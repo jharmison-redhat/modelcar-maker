@@ -34,7 +34,7 @@ modelcar-maker [OPTIONS] [MODEL]
 | `-v`, `--verbose`                          | Increase logging verbosity. Repeat for more.                                                                                                                   |
 | `-V`, `--version`                          | Print version and exit.                                                                                                                                        |
 
-**Image tag format:** `{registry}/{repository}/{specified tag or normalized-model}-modelcar`
+**Image tag format:** `{registry}/{repository}:{specified tag or normalized-model}-modelcar`
 
 When no tag is specified, the model repo ID is normalized for use as a tag: slashes become `--`, dots become `_`, and
 the string is lowercased before appending `-modelcar`. For example, `meta-llama/Llama-3.2-3B-Instruct` produces tag
