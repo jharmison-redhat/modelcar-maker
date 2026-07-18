@@ -120,7 +120,7 @@ API per-model (e.g. Data Science Connections)
 {{- if .tag -}}
   {{- .tag | replace "--" "-" | replace "_" "-" | lower | trunc 63 | trimSuffix "-" -}}
 {{- else -}}
-  {{- printf "%s-modelcar" .repo | replace "/" "-" | replace "." "-" | lower | trunc 63 | trimSuffix "-" -}}
+  {{- printf "%s-modelcar" .repo | replace "/" "-" | replace "." "-" | replace "_" "-" | lower | trunc 63 | trimSuffix "-" -}}
 {{- end -}}
 {{- end -}}
 
