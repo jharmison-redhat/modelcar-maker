@@ -8,5 +8,5 @@ metadata:
     {{- include "modelcar-maker.labels" $ | nindent 4 }}
 data:
   custom-ca.crt: |
-    {{ . | nindent 4 }}
+    {{- . | nindent 4 }}
 {{- end }}
