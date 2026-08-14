@@ -105,6 +105,10 @@ spec:
               value: /modelcar-maker
             - name: REQUESTS_CA_BUNDLE
               value: /etc/pki/ca-trust/extracted/openssl/ca-bundle.trust.crt
+            {{- range $k, $v := .Values.modelcar.env }}
+            - name: {{ $k }}
+              value: {{ quote $v }}
+            {{- end }}
           envFrom:
             - secretRef:
                 name: {{ include "modelcar-maker.fullname" . }}

@@ -36,6 +36,7 @@ modelcar:
   baseImagePull: true # especially important to be true if using a PVC workspace
   cleanup: true # cleanup happens between models, so for many models this helps (but is pointless with few/small)
   maintainer: James Harmison <jharmiso@redhat.com>
+  env: {} # specifies alternative environment variables for the modelcar-maker job
 
 certificateAuthorities:
   # mount the openshift trusted CA, including any cluster-wide certificates
