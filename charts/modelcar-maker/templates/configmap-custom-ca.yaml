@@ -1,0 +1,12 @@
+{{- with .Values.certificateAuthorities.custom }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "modelcar-maker.fullname" $ }}-custom-ca
+  namespace: {{ $.Release.Namespace }}
+  labels:
+    {{- include "modelcar-maker.labels" $ | nindent 4 }}
+data:
+  custom-ca.crt: |
+    {{ . | nindent 4 }}
+{{- end }}

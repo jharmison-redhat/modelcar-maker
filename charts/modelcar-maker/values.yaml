@@ -37,8 +37,11 @@ modelcar:
   cleanup: true # cleanup happens between models, so for many models this helps (but is pointless with few/small)
   maintainer: James Harmison <jharmiso@redhat.com>
 
-# mount the openshift trusted CA, including any cluster-wide certificates
-openshiftClusterCa: true
+certificateAuthorities:
+  # mount the openshift trusted CA, including any cluster-wide certificates
+  openshiftClusterCa: false
+  # specify an arbitrary CA to include
+  custom: ""
 
 dataScienceConnections: # for use with OpenShift AI Model Serving
   create: true

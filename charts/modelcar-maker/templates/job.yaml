@@ -1,6 +1,7 @@
-{{- $needsClusterCa := .Values.openshiftClusterCa }}
+{{- $needsClusterCa := .Values.certificateAuthorities.openshiftClusterCa }}
 {{- $needsServiceCa := eq .Values.modelcar.image.registry "image-registry.openshift-image-registry.svc:5000" }}
-{{- $needsCa := or $needsClusterCa $needsServiceCa }}
+{{- $needsCustomCa := ne "" .Values.certificateAuthorities.custom }}
+{{- $needsCa := or $needsCustomCa (or $needsClusterCa $needsServiceCa) }}
 {{- $needsAuthfile := not .Values.modelcar.dockerConfigJson }}
 apiVersion: batch/v1
 kind: Job
@@ -45,6 +46,11 @@ spec:
             - name: cluster-ca
               mountPath: /etc/pki/ca-trust/source/anchors/ca-bundle.crt
               subPath: ca-bundle.crt
+            {{- end }}
+            {{- if $needsCustomCa }}
+            - name: custom-ca
+              mountPath: /etc/pki/ca-trust/source/anchors/custom-ca.crt
+              subPath: custom-ca.crt
             {{- end }}
             - name: extracted-cas
               mountPath: /extracted
@@ -161,6 +167,11 @@ spec:
         - name: cluster-ca
           configMap:
             name: {{ include "modelcar-maker.fullname" . }}-cluster-ca
+        {{- end }}
+        {{- if $needsCustomCa }}
+        - name: custom-ca
+          configMap:
+            name: {{ include "modelcar-maker.fullname" . }}-custom-ca
         {{- end }}
         {{- end }}
       {{- with .Values.tolerations }}

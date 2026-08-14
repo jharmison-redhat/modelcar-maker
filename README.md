@@ -203,8 +203,6 @@ modelcar:
         }
       }
     }
-
-openshiftClusterCa: false
 ```
 
 The `dockerConfigJson` section here should be the entire pull secret necessary for building your Modelcar image,
