@@ -1,3 +1,7 @@
+{{- $needsClusterCa := .Values.openshiftClusterCa }}
+{{- $needsServiceCa := eq .Values.modelcar.image.registry "image-registry.openshift-image-registry.svc:5000" }}
+{{- $needsCa := or $needsClusterCa $needsServiceCa }}
+{{- $needsAuthfile := not .Values.modelcar.dockerConfigJson }}
 apiVersion: batch/v1
 kind: Job
 metadata:
@@ -20,9 +24,9 @@ spec:
       restartPolicy: Never
       securityContext:
         {{- toYaml .Values.podSecurityContext | nindent 8 }}
-      {{- if or (not .Values.modelcar.dockerConfigJson) (eq .Values.modelcar.image.registry "image-registry.openshift-image-registry.svc:5000") }}
+      {{- if or $needsCa $needsAuthfile }}
       initContainers:
-        {{- if eq .Values.modelcar.image.registry "image-registry.openshift-image-registry.svc:5000" }}
+        {{- if $needsCa }}
         - name: ca-bundle-maker
           image: {{ include "modelcar-maker.image-name" . }}
           imagePullPolicy: {{ .Values.image.pullPolicy }}
@@ -32,9 +36,16 @@ spec:
             - -c
             - update-ca-trust extract --output /extracted
           volumeMounts:
+            {{- if $needsServiceCa }}
             - name: service-ca
               mountPath: /etc/pki/ca-trust/source/anchors/service-ca.crt
               subPath: service-ca.crt
+            {{- end }}
+            {{- if $needsClusterCa }}
+            - name: cluster-ca
+              mountPath: /etc/pki/ca-trust/source/anchors/ca-bundle.crt
+              subPath: ca-bundle.crt
+            {{- end }}
             - name: extracted-cas
               mountPath: /extracted
           securityContext:
@@ -44,7 +55,7 @@ spec:
             {{- toYaml . | nindent 12 }}
           {{- end }}
         {{- end }}
-        {{- if not .Values.modelcar.dockerConfigJson }}
+        {{- if $needsAuthfile }}
         - name: authfile-builder
           image: {{ include "modelcar-maker.image-name" . }}
           imagePullPolicy: {{ .Values.image.pullPolicy }}
@@ -103,7 +114,7 @@ spec:
               mountPath: /modelcar-maker/.docker/config.json
               subPath: config.json
             {{- end }}
-            {{- if eq .Values.modelcar.image.registry "image-registry.openshift-image-registry.svc:5000" }}
+            {{- if $needsCa }}
             - name: extracted-cas
               mountPath: /etc/pki/ca-trust/extracted
               readOnly: true
@@ -138,12 +149,19 @@ spec:
               - key: .dockerconfigjson
                 path: config.json
         {{- end }}
-        {{- if eq .Values.modelcar.image.registry "image-registry.openshift-image-registry.svc:5000" }}
+        {{- if $needsCa }}
+        - name: extracted-cas
+          emptyDir: {}
+        {{- if $needsServiceCa }}
         - name: service-ca
           configMap:
             name: {{ include "modelcar-maker.fullname" . }}-service-ca
-        - name: extracted-cas
-          emptyDir: {}
+        {{- end }}
+        {{- if $needsClusterCa }}
+        - name: cluster-ca
+          configMap:
+            name: {{ include "modelcar-maker.fullname" . }}-cluster-ca
+        {{- end }}
         {{- end }}
       {{- with .Values.tolerations }}
       tolerations:

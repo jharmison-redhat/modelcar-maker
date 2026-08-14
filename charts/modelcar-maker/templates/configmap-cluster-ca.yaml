@@ -1,0 +1,11 @@
+{{- if .Values.openshiftClusterCa }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "modelcar-maker.fullname" . }}-cluster-ca
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "modelcar-maker.labels" . | nindent 4 }}
+  annotations:
+    config.openshift.io/inject-trusted-cabundle: "true"
+{{- end }}
