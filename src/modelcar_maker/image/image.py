@@ -1,7 +1,11 @@
 import datetime
 import hashlib
+import json
+import os
+import re
 import shutil
 import subprocess
+import tempfile
 from functools import cached_property
 from pathlib import Path
 from typing import Optional
@@ -11,16 +15,24 @@ from olot.backend.skopeo import skopeo_pull
 from olot.backend.skopeo import skopeo_push
 from olot.basics import oci_layers_on_top
 from pydantic import BaseModel
+from pydantic import ConfigDict
+from pydantic import field_validator
 
 from ..__version__ import version as modelcar_maker_version
 from ..model import Model
+from ..util import atomic_replace_directory
 from ..util import cleanup
 from ..util import logger
 from ..util import normalize
+from ..util import remove_path
 from ..util import settings
+
+_OCI_TAG = re.compile(r"^[A-Za-z0-9_][A-Za-z0-9_.-]{0,127}$")
 
 
 class Skopeo(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
     authfile: Optional[Path] = None
 
     @property
@@ -40,36 +52,110 @@ class Skopeo(BaseModel):
     def inspect(self, reference: str) -> Optional[str]:
         try:
             return skopeo_inspect(skopeo_ref=reference, **self._extra_args)
-        except subprocess.CalledProcessError as e:
+        except subprocess.CalledProcessError:
             logger.warning(f"Unable to inspect: {reference}")
             return None
 
 
+class BaseCacheMetadata(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    requested_reference: str
+    resolved_digest: str
+
+
 class BaseImage(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
     tagged_image: str
     skopeo: Skopeo
     update: bool
     path: Path = Path("tmp/base")
 
     @property
+    def metadata_path(self) -> Path:
+        return self.path.with_name(f"{self.path.name}.metadata.json")
+
+    @staticmethod
+    def _layout_is_usable(path: Path) -> bool:
+        index = path / "index.json"
+        if not index.is_file():
+            return False
+        try:
+            data = json.loads(index.read_text())
+        except (OSError, json.JSONDecodeError):
+            return False
+        return isinstance(data, dict) and isinstance(data.get("manifests"), list) and bool(data["manifests"])
+
+    @property
     def exists(self) -> bool:
-        return self.path.joinpath("index.json").exists()
+        return self._layout_is_usable(self.path)
+
+    def _read_metadata(self) -> Optional[BaseCacheMetadata]:
+        try:
+            return BaseCacheMetadata.model_validate_json(self.metadata_path.read_text())
+        except (OSError, ValueError):
+            return None
+
+    def _resolve_digest(self) -> str:
+        manifest = self.skopeo.inspect(f"docker://{self.tagged_image}")
+        if manifest is None:
+            raise RuntimeError(f"Unable to resolve base image digest for {self.tagged_image}")
+        return f"sha256:{hashlib.sha256(manifest.encode('utf-8')).hexdigest()}"
+
+    def _cache_matches(self, digest: str) -> bool:
+        metadata = self._read_metadata()
+        return (
+            self.exists
+            and metadata is not None
+            and metadata.requested_reference == self.tagged_image
+            and metadata.resolved_digest == digest
+        )
 
     def pull(self) -> None:
-        """Pulls the base image into a cache directory to reuse for image builds"""
-        result = None
-        if not self.exists:
-            logger.info(f"Pulling base image {self.tagged_image}")
-            result = self.skopeo.pull(base_image=self.tagged_image, dest=self.path)
-        elif self.needs_update:
-            logger.warning(f"Cleaning up stale base image from cache: {self.path}")
-            cleanup(self.path)
-            logger.info(f"Pulling fresh base image {self.tagged_image}")
-            result = self.skopeo.pull(base_image=self.tagged_image, dest=self.path)
-        if result is not None and result.returncode != 0:
-            raise RuntimeError(f"Pull of {self.tagged_image} to {self.path} failed: {result}")
+        """Validate or atomically populate the reusable base-image cache."""
+        if not self.update:
+            if self.exists:
+                logger.debug("Using existing base cache without identity validation because pulling is disabled")
+            else:
+                logger.debug("No base cache exists and pulling is disabled")
+            return
+
+        digest = self._resolve_digest()
+        logger.info(f"Resolved {self.tagged_image} to {digest}")
+        if self._cache_matches(digest):
+            logger.debug("Base image cache identity and digest match")
+            return
+
+        self.path.parent.mkdir(parents=True, exist_ok=True)
+        stage = Path(tempfile.mkdtemp(prefix=f".{self.path.name}.stage-", dir=self.path.parent))
+        metadata_fd, metadata_name = tempfile.mkstemp(
+            prefix=f".{self.metadata_path.name}.stage-", dir=self.metadata_path.parent
+        )
+        os.close(metadata_fd)
+        staged_metadata = Path(metadata_name)
+        try:
+            pinned_reference = f"{self.tagged_image.split('@', 1)[0]}@{digest}"
+            logger.info(f"Pulling base image {pinned_reference}")
+            result = self.skopeo.pull(base_image=pinned_reference, dest=stage)
+            if result.returncode != 0:
+                raise RuntimeError(f"Pull of {pinned_reference} to {stage} failed: {result}")
+            if not self._layout_is_usable(stage):
+                raise RuntimeError(f"Pulled base image did not produce a usable OCI layout: {stage}")
+            metadata = BaseCacheMetadata(requested_reference=self.tagged_image, resolved_digest=digest)
+            staged_metadata.write_text(metadata.model_dump_json(indent=2) + "\n")
+            atomic_replace_directory(
+                stage,
+                self.path,
+                companion_replacements=((staged_metadata, self.metadata_path),),
+            )
+        finally:
+            remove_path(stage)
+            remove_path(staged_metadata)
 
     def copy_to(self, dest: Path) -> None:
+        if not self.exists:
+            raise RuntimeError(f"No usable base image cache exists at {self.path}")
         logger.debug(f"Copying base image {self.tagged_image} from {self.path} to {dest}")
         dest.mkdir(parents=True, exist_ok=True)
         for item in self.path.iterdir():
@@ -80,34 +166,11 @@ class BaseImage(BaseModel):
             else:
                 shutil.copy2(item, dest_item)
 
-    @property
-    def needs_update(self) -> bool:
-        """Determines if the locally cached base image manifest differs from the remote"""
-        if not self.update and self.exists:
-            logger.debug("Base image is not set to update, already exists")
-            return False
-        local_manifest = self.skopeo.inspect(f"oci:{self.path}:latest")
-        if local_manifest is None:
-            logger.debug(f"No valid manifest found in {self.path}")
-            return True
-        local_digest = hashlib.sha256(local_manifest.encode("utf-8")).hexdigest()
-        logger.info(f"Locally cached base image manifest digest: {local_digest}")
-
-        remote_manifest = self.skopeo.inspect(f"docker://{self.tagged_image}")
-        if remote_manifest is None:
-            logger.error("Unable to read remote manifest, attempting pull but expecting failure")
-            return True
-        remote_digest = hashlib.sha256(remote_manifest.encode("utf-8")).hexdigest()
-        logger.info(f"Remote base image manifest digest: {remote_digest}")
-
-        needs_update = local_digest != remote_digest
-        if needs_update:
-            logger.debug("Not matching! Base image cache update required...")
-        return needs_update
-
 
 class ModelcarImage(BaseModel):
     """Represents a complete Modelcar Image, including methods to build, push, and clean them up."""
+
+    model_config = ConfigDict(extra="forbid")
 
     base_image: BaseImage
     model: Model
@@ -116,13 +179,27 @@ class ModelcarImage(BaseModel):
     repository: str
     tag: Optional[str] = None
 
+    @field_validator("registry", "repository")
+    @classmethod
+    def image_name_parts_must_not_be_empty(cls, value: str) -> str:
+        if not value.strip():
+            raise ValueError("registry and repository must not be empty")
+        return value
+
+    @field_validator("tag")
+    @classmethod
+    def tag_must_be_valid(cls, value: Optional[str]) -> Optional[str]:
+        if value is not None and _OCI_TAG.fullmatch(value) is None:
+            raise ValueError("tag must be a valid OCI tag of at most 128 characters")
+        return value
+
     @cached_property
     def normalized(self) -> str:
         """Either the specified tag, or one built from the model repo_id"""
-        if self.tag is None:
-            return f"{normalize(self.model.repo_id)}-modelcar"
-        else:
-            return self.tag
+        value = f"{normalize(self.model.repo_id)}-modelcar" if self.tag is None else self.tag
+        if _OCI_TAG.fullmatch(value) is None:
+            raise ValueError("generated tag is not a valid OCI tag of at most 128 characters")
+        return value
 
     @cached_property
     def tagged_image(self) -> str:
@@ -132,7 +209,11 @@ class ModelcarImage(BaseModel):
     @cached_property
     def layout_dir(self) -> Path:
         """The directory where the OCI layout is constructed on disk"""
-        return Path(f"tmp/{self.normalized}")
+        root = Path("tmp").resolve()
+        path = root / self.normalized
+        if not path.resolve().is_relative_to(root):
+            raise ValueError("Generated OCI layout path is outside the tmp root")
+        return path
 
     @property
     def _rendered_labels(self) -> dict[str, str]:

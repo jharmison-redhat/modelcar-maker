@@ -2,7 +2,6 @@ from pathlib import Path
 from typing import Optional
 
 import typer
-from pydantic import BaseModel
 from rich import print as rprint
 from typing_extensions import Annotated
 
@@ -96,6 +95,11 @@ def build(
             "-a",
             "--authfile",
             help="The authfile to use for the base pull and modelcar push (if not provided, uses skopeo default behavior)",
+            exists=True,
+            file_okay=True,
+            dir_okay=False,
+            readable=True,
+            resolve_path=True,
         ),
     ] = settings.image.get("authfile"),
     image_cleanup: Annotated[
@@ -160,6 +164,14 @@ def build(
     else:
         models = [repo_id]
 
+    skopeo = Skopeo(authfile=authfile)
+    base = BaseImage(
+        skopeo=skopeo,
+        tagged_image=base_image,
+        update=pull,
+    )
+    base_prepared = False
+
     logger.info(f"Processing the following model repo_id list: {models}")
     for repo_id in models:
         rprint(f"Processing {repo_id}")
@@ -168,14 +180,6 @@ def build(
         model = Model(
             repo_id=repo_id,
             files=model_files,
-        )
-        skopeo = Skopeo(
-            authfile=authfile,
-        )
-        base = BaseImage(
-            skopeo=skopeo,
-            tagged_image=base_image,
-            update=pull,
         )
         modelcar_tag = tag if tag is not None else settings.models.get(repo_id, {}).get("tag")
         logger.debug(f"Processing modelcar image for {repo_id} with explicit tag: {modelcar_tag}")
@@ -199,9 +203,10 @@ def build(
                     model.cleanup()
                 continue
 
-        if base.needs_update:
-            rprint(f"Downloading {base_image} to {base.path}")
+        if not base_prepared:
+            rprint(f"Preparing base image cache for {base_image} at {base.path}")
             base.pull()
+            base_prepared = True
         rprint(f"Downloading {repo_id} to {model.path}")
         model.download()
         rprint(f"Building {image.tagged_image} in {image.layout_dir}")
