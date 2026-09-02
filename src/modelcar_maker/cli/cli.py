@@ -1,9 +1,9 @@
 from pathlib import Path
+from typing import Annotated
 from typing import Optional
 
 import typer
 from rich import print as rprint
-from typing_extensions import Annotated
 
 from ..image import BaseImage
 from ..image import ModelcarImage
