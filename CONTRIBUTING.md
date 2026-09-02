@@ -8,7 +8,8 @@ python3.12 -m venv .venv
 python -m pip install -e '.[dev]'
 ```
 
-Fast checks need no registry credentials or containers:
+Fast checks need no registry credentials or containers. The combined `py311,py312` command requires both interpreters;
+if only one is available, run its single-factor environment instead (for example, `tox run -e py312`):
 
 ```bash
 tox run -e format

@@ -81,14 +81,15 @@ Settings are resolved in layer order (later layers override earlier ones):
 7. Environment variables with prefix `MODELCAR_MAKER_`
 8. CLI arguments override all of the above
 
-Any setting can be overridden via environment variable by uppercasing the section and key and joining with underscores.
+Any setting can be overridden via environment variable by uppercasing the section and key and joining with double
+underscores.
 For example:
 
 | Env Var                         | Overrides        |
 | ------------------------------- | ---------------- |
-| `MODELCAR_MAKER_IMAGE_REGISTRY` | `image.registry` |
-| `MODELCAR_MAKER_IMAGE_PUSH`     | `image.push`     |
-| `MODELCAR_MAKER_MODELS_DEFAULT` | `models.default` |
+| `MODELCAR_MAKER_IMAGE__REGISTRY` | `image.registry` |
+| `MODELCAR_MAKER_IMAGE__PUSH`     | `image.push`     |
+| `MODELCAR_MAKER_MODELS__DEFAULT` | `models.default` |
 
 Models may have additional configuration applied to them by using the model repository ID in a subkey under the `models`
 section of the config. This allows mapping tags and file lists to specific models via config.
@@ -231,10 +232,10 @@ For an explicit registry credential, set `modelcar.dockerConfigJson` inline in t
 creates the current generated Secret from that value and mounts it as the Docker config used by `skopeo`; supply a
 complete config that can pull the selected base image and push the destination image.
 
-When `modelcar.dockerConfigJson` is empty, the Job generates a Docker config from its service-account token. The
-generated config is written only to a memory-backed ephemeral volume, never to the workspace or PVC. It is intended for
-the OpenShift internal registry and can also work with an unauthenticated writable registry. It does not supply
-credentials for another authenticated registry. Authentication failures are retained in the completed Job logs.
+When `modelcar.dockerConfigJson` is empty, service-account credentials are the only supplied credentials. The Job
+generates a Docker config from its service-account token and writes it only to a memory-backed ephemeral volume, never
+to the workspace or PVC. They can work with the OpenShift internal registry or an unauthenticated writable registry;
+other authentication failures appear in the Job logs.
 
 The workspace can be an `emptyDir` or PVC. A PVC retains model and image workspace data when selected, but never the
 generated service-account Docker credentials.

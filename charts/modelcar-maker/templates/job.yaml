@@ -74,8 +74,8 @@ spec:
               token="$(cat /var/run/secrets/kubernetes.io/serviceaccount/token)"
               auth_string="$(echo -n "serviceaccount:${token}" | base64 -w0)"
               umask 077
-              mkdir -p /registry-credentials/.docker
-              cat << EOF > /registry-credentials/.docker/config.json
+              mkdir -p /registry-credentials
+              cat << EOF > /registry-credentials/config.json
               {
                 "auths": {
                   "{{ .Values.modelcar.image.registry }}": {
@@ -84,7 +84,7 @@ spec:
                 }
               }
               EOF
-              chmod 600 /registry-credentials/.docker/config.json
+              chmod 600 /registry-credentials/config.json
           volumeMounts:
             - name: registry-credentials
               mountPath: /registry-credentials

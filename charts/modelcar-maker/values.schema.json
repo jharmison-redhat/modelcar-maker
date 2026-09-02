@@ -96,13 +96,22 @@
       "type": "object",
       "properties": {
         "type": { "enum": ["emptyDir", "pvc"] },
-        "emptyDir": { "type": "object" },
+        "emptyDir": {
+          "type": "object",
+          "properties": {
+            "medium": { "enum": ["", "Memory"] },
+            "sizeLimit": { "$ref": "#/definitions/quantity" }
+          },
+          "additionalProperties": true
+        },
         "pvc": {
           "type": "object",
           "properties": {
-            "size": { "type": "string", "minLength": 1 },
+            "size": { "$ref": "#/definitions/quantity" },
             "storageClassName": { "type": "string" },
-            "accessModes": { "type": "array", "minItems": 1, "items": { "type": "string" } }
+            "accessModes": { "type": "array", "minItems": 1, "items": { "type": "string", "minLength": 1 } },
+            "volumeName": { "type": "string" },
+            "selector": { "type": "object", "additionalProperties": true }
           },
           "additionalProperties": true
         },
@@ -118,9 +127,9 @@
       ]
     },
     "backoffLimit": { "type": "integer", "minimum": 0 },
-    "podSecurityContext": { "type": "object" },
-    "securityContext": { "type": "object" },
-    "resources": { "type": "object" },
+    "podSecurityContext": { "$ref": "#/definitions/podSecurityContext" },
+    "securityContext": { "$ref": "#/definitions/containerSecurityContext" },
+    "resources": { "$ref": "#/definitions/resources" },
     "podAnnotations": { "type": "object", "additionalProperties": { "type": "string" } },
     "tolerations": { "type": "array", "items": { "type": "object" } },
     "nodeSelector": { "type": "object", "additionalProperties": { "type": "string" } },
@@ -133,5 +142,63 @@
       "additionalProperties": true
     }
   },
-  "additionalProperties": true
+  "additionalProperties": true,
+  "definitions": {
+    "quantity": {
+      "type": ["string", "number"]
+    },
+    "resourceList": {
+      "type": "object",
+      "additionalProperties": { "$ref": "#/definitions/quantity" }
+    },
+    "resources": {
+      "type": "object",
+      "properties": {
+        "limits": { "$ref": "#/definitions/resourceList" },
+        "requests": { "$ref": "#/definitions/resourceList" }
+      },
+      "additionalProperties": true
+    },
+    "seccompProfile": {
+      "type": "object",
+      "properties": {
+        "type": { "enum": ["RuntimeDefault", "Localhost", "Unconfined"] },
+        "localhostProfile": { "type": "string" }
+      },
+      "additionalProperties": true
+    },
+    "podSecurityContext": {
+      "type": "object",
+      "properties": {
+        "runAsUser": { "type": "integer", "minimum": 0 },
+        "runAsGroup": { "type": "integer", "minimum": 0 },
+        "runAsNonRoot": { "type": "boolean" },
+        "fsGroup": { "type": "integer", "minimum": 0 },
+        "fsGroupChangePolicy": { "enum": ["OnRootMismatch", "Always"] },
+        "supplementalGroups": { "type": "array", "items": { "type": "integer", "minimum": 0 } },
+        "supplementalGroupsPolicy": { "enum": ["Merge", "Strict"] },
+        "seccompProfile": { "$ref": "#/definitions/seccompProfile" },
+        "seLinuxOptions": { "type": "object", "additionalProperties": { "type": "string" } },
+        "sysctls": { "type": "array", "items": { "type": "object", "properties": { "name": { "type": "string" }, "value": { "type": "string" } }, "additionalProperties": true } }
+      },
+      "additionalProperties": true
+    },
+    "containerSecurityContext": {
+      "type": "object",
+      "properties": {
+        "allowPrivilegeEscalation": { "type": "boolean" },
+        "privileged": { "type": "boolean" },
+        "readOnlyRootFilesystem": { "type": "boolean" },
+        "runAsUser": { "type": "integer", "minimum": 0 },
+        "runAsGroup": { "type": "integer", "minimum": 0 },
+        "runAsNonRoot": { "type": "boolean" },
+        "procMount": { "type": "string" },
+        "capabilities": { "type": "object", "properties": { "add": { "type": "array", "items": { "type": "string" } }, "drop": { "type": "array", "items": { "type": "string" } } }, "additionalProperties": true },
+        "seccompProfile": { "$ref": "#/definitions/seccompProfile" },
+        "seLinuxOptions": { "type": "object", "additionalProperties": { "type": "string" } },
+        "windowsOptions": { "type": "object", "additionalProperties": true }
+      },
+      "additionalProperties": true
+    }
+  }
 }

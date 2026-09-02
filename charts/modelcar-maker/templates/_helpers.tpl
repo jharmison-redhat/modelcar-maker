@@ -83,7 +83,7 @@ Create a stable identity for a Job execution.
 {{/* Create a DNS-label-safe Job name with a 16-character execution hash. */}}
 {{- define "modelcar-maker.job-name" -}}
 {{- $hash := include "modelcar-maker.job-hash" . | trunc 16 -}}
-{{- $base := include "modelcar-maker.fullname" . | trunc (int (sub 63 (add 1 (len $hash)))) | trimSuffix "-" -}}
+{{- $base := include "modelcar-maker.fullname" . | trunc (int (sub 63 (add 1 (len $hash)))) | trimSuffix "-" | trimSuffix "." | trimSuffix "-" -}}
 {{- printf "%s-%s" $base $hash -}}
 {{- end -}}
 
