@@ -30,6 +30,14 @@ from ..util import settings
 _OCI_TAG = re.compile(r"^[A-Za-z0-9_][A-Za-z0-9_.-]{0,127}$")
 
 
+def _reference_at_digest(reference: str, digest: str) -> str:
+    name = reference.split("@", 1)[0]
+    tag_separator = name.rfind(":")
+    if tag_separator > name.rfind("/"):
+        name = name[:tag_separator]
+    return f"{name}@{digest}"
+
+
 class Skopeo(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
@@ -135,7 +143,7 @@ class BaseImage(BaseModel):
         os.close(metadata_fd)
         staged_metadata = Path(metadata_name)
         try:
-            pinned_reference = f"{self.tagged_image.split('@', 1)[0]}@{digest}"
+            pinned_reference = _reference_at_digest(self.tagged_image, digest)
             logger.info(f"Pulling base image {pinned_reference}")
             result = self.skopeo.pull(base_image=pinned_reference, dest=stage)
             if result.returncode != 0:

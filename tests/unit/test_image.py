@@ -10,10 +10,23 @@ import modelcar_maker.image.image as image_module
 from modelcar_maker.image import BaseImage
 from modelcar_maker.image import ModelcarImage
 from modelcar_maker.image import Skopeo
+from modelcar_maker.image.image import _reference_at_digest
 from modelcar_maker.model import Model
 
 REMOTE_MANIFEST = '{"schemaVersion":2}'
 REMOTE_DIGEST = f"sha256:{hashlib.sha256(REMOTE_MANIFEST.encode()).hexdigest()}"
+
+
+@pytest.mark.parametrize(
+    ("reference", "expected"),
+    [
+        ("registry.example/repository/base:latest", f"registry.example/repository/base@{REMOTE_DIGEST}"),
+        ("registry.example:5000/repository/base:v1", f"registry.example:5000/repository/base@{REMOTE_DIGEST}"),
+        ("registry.example/repository/base", f"registry.example/repository/base@{REMOTE_DIGEST}"),
+    ],
+)
+def test_reference_at_digest_replaces_tag(reference: str, expected: str) -> None:
+    assert _reference_at_digest(reference, REMOTE_DIGEST) == expected
 
 
 def write_layout(path: Path, marker: str) -> None:
@@ -65,7 +78,7 @@ def test_pull_atomically_replaces_layout_and_metadata(tmp_path: Path, monkeypatc
 
     base.pull()
 
-    assert pulled_references == [f"{base.tagged_image}@{REMOTE_DIGEST}"]
+    assert pulled_references == [f"registry.example/repository/base@{REMOTE_DIGEST}"]
     assert (base.path / "marker").read_text() == "new"
     metadata = json.loads(base.metadata_path.read_text())
     assert metadata == {"requested_reference": base.tagged_image, "resolved_digest": REMOTE_DIGEST}
