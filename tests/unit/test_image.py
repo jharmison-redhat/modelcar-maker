@@ -180,7 +180,7 @@ def test_image_boundary_validation_and_extra_fields(tmp_path: Path) -> None:
             tag="bad/tag",
         )
     with pytest.raises(ValidationError):
-        Model(repo_id="org/model", unexpected=True)
+        Model(repo_id="org/model", unexpected=True)  # type: ignore[call-arg]
 
 
 def test_image_digest_reads_oci_index(tmp_path: Path, monkeypatch) -> None:

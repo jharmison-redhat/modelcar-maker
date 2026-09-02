@@ -21,7 +21,7 @@ modelcar-maker [OPTIONS] [MODEL]
 | Argument / Option                          | Description                                                                                                                                                    |
 | ------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `MODEL`                                    | Hugging Face model repo ID (e.g., `meta-llama/Llama-3.2-3B-Instruct`). Optional if `models.default` is configured.                                             |
-| `-f`, `--files`                             | Specific files to grab from the repo (can be specified more than once), otherwise grabs all (with some notable exceptions, skipping pytorch bins for example). |
+| `-f`, `--files`                             | Specific files to download from the repo (can be specified more than once); without it, all repository files are downloaded. |
 | `--registry`                               | Registry for the output image. Default: `quay.io`.                                                                                                             |
 | `-r`, `--repository`                       | Repository within the registry. Default: `jharmison/models`.                                                                                                   |
 | `-t`, `--tag`                              | The tag to push with, otherwise build from normalized model name.                                                                                              |
@@ -44,6 +44,11 @@ With `--output json`, stdout contains exactly one JSON document with the overall
 for each attempted model. Per-model results include status (`success`, `skipped`, or `failed`), durations, errors, and
 available download, build, destination, and push metadata. Logs and diagnostics are written to stderr. A failed model
 makes the command exit nonzero; an operation with both successes and failures has status `partial`.
+
+After download, image construction excludes files with any dot-prefixed path component, plus files named
+`Containerfile`, `original`, and `consolidated.safetensors`. Other downloaded files, including PyTorch files, are not
+excluded by this filter. `--quiet` affects text progress and success messages only; JSON output remains the final stdout
+document. `--fail-fast` stops attempting further models after the first model-specific failure.
 
 When no tag is specified, the model repo ID is normalized for use as a tag: slashes become `--`, dots become `_`, and
 the string is lowercased before appending `-modelcar`. For example, `meta-llama/Llama-3.2-3B-Instruct` produces tag
@@ -219,10 +224,30 @@ lots of ways to make these, including by hand, using `podman login` with credent
 file it creates, etc. It doesn't require any special handling and is passed directly to `skopeo` as
 `~/.docker/config.json` which it always falls back to using.
 
-When `modelcar.dockerConfigJson` is empty, the chart supplies only credentials generated from the Job service account.
-They are written to a memory-backed ephemeral volume, not the workspace or PVC. This can authenticate pushes to the
-OpenShift internal registry or to an unauthenticated writable registry. Pushes to registries that require other,
-unprovided authentication will fail; inspect the retained Job logs for the registry error.
+### Credentials and workspace behavior
+
+For an explicit registry credential, set `modelcar.dockerConfigJson` inline in the values supplied to Helm. The chart
+creates the current generated Secret from that value and mounts it as the Docker config used by `skopeo`; supply a
+complete config that can pull the selected base image and push the destination image.
+
+When `modelcar.dockerConfigJson` is empty, the Job generates a Docker config from its service-account token. The
+generated config is written only to a memory-backed ephemeral volume, never to the workspace or PVC. It is intended for
+the OpenShift internal registry and can also work with an unauthenticated writable registry. It does not supply
+credentials for another authenticated registry. Authentication failures are retained in the completed Job logs.
+
+The workspace can be an `emptyDir` or PVC. A PVC retains model and image workspace data when selected, but never the
+generated service-account Docker credentials.
+
+### Troubleshooting
+
+- **Hugging Face access:** provide `HF_TOKEN` for gated models or when your access/rate limit requires it.
+- **Registry authentication:** verify that `modelcar.dockerConfigJson` covers both base-image pulls and destination
+  pushes. For service-account mode, use the OpenShift internal registry or an unauthenticated writable registry.
+- **CA trust:** enable the cluster CA option or provide the required custom CA in `certificateAuthorities.custom`.
+- **Workspace space:** choose a workspace size that accommodates the downloaded model, staging/reconciliation, and OCI
+  layout; increase a PVC size or configure `workspace.emptyDir` limits accordingly.
+- **Retained Job name conflicts:** Jobs are retained intentionally. Changing an execution input produces a new name;
+  otherwise remove the retained Job deliberately before reusing the same release and inputs.
 
 ## License
 

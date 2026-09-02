@@ -48,7 +48,7 @@ def _run(cmd: list[str], check: bool = True) -> str:
 
 def _verify_image(image_tag: str, modelcard_path: str, model_name: str, normalized: str) -> None:
     """Common image verification: model contents, modelcard path, and labels."""
-    unshare = ()
+    unshare: tuple[str, ...] = ()
     if os.getenv("CI") is not None:
         unshare = ("podman", "unshare")
     ls_output = _run(
@@ -153,16 +153,16 @@ def test_build_real_model_no_push_olot(build_args: list[str]) -> None:
         assert (MODEL_DIR / fname).exists(), f"Expected file {fname} in model dir"
     model = Model(repo_id=MODEL)
     modelcard, files = model.model_files()
-    files = [file.name for file in files]
+    file_names = [file.name for file in files]
     assert modelcard is not None
-    files.append(modelcard.name)
+    file_names.append(modelcard.name)
     for file in EXPECTED_FILES:
-        assert file in files
+        assert file in file_names
     assert modelcard is not None
     assert modelcard.parts[-1] == EXPECTED_MODELCARD
 
     # 2. Load OCI layout to containers-storage, for running with podman
-    unshare = ()
+    unshare: tuple[str, ...] = ()
     if os.getenv("CI") is not None:
         unshare = ("podman", "unshare")
     _run(

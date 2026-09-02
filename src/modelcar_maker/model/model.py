@@ -117,22 +117,22 @@ class Model(BaseModel):
             seed_directory(self.path, stage)
             if not self.files:
                 logger.info(f"Downloading snapshot of {self.repo_id} at {sha} to {stage}")
-                snapshot_download(
+                snapshot_download(  # pyright: ignore[reportCallIssue]
                     self.repo_id,
                     revision=sha,
                     local_dir=stage,
-                    tqdm_class=tqdm_rich if progress else None,
-                )  # type: ignore[arg-type]
+                    tqdm_class=tqdm_rich if progress else None,  # pyright: ignore[reportArgumentType]
+                )
             else:
                 for filename in self.files:
                     logger.info(f"Downloading {filename} from {self.repo_id} at {sha} to {stage / filename}")
-                    hf_hub_download(
+                    hf_hub_download(  # pyright: ignore[reportCallIssue]
                         repo_id=self.repo_id,
                         revision=sha,
                         local_dir=stage,
                         filename=filename,
-                        tqdm_class=tqdm_rich if progress else None,
-                    )  # type: ignore[arg-type]
+                        tqdm_class=tqdm_rich if progress else None,  # pyright: ignore[reportArgumentType]
+                    )
             _validate_stage_revision(stage, expected_files, sha)
             reconcile_model_files(stage, expected_files)
             atomic_replace_directory(stage, self.path)

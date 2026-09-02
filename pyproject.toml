@@ -21,7 +21,16 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-dev = ["tox", "pytest"]
+dev = [
+  "build",
+  "black",
+  "flake8",
+  "isort",
+  "mypy",
+  "pyright",
+  "pytest",
+  "tox",
+]
 
 [project.urls]
 Source = "https://github.com/jharmison-redhat/modelcar-maker"
@@ -55,5 +64,7 @@ src_paths = ["src", "tests"]
 markers = ["slow: marks tests as slow (deselect with -m 'not slow')"]
 
 [tool.pyright]
-venvPath = "."
-venv = ".venv"
+include = ["src", "tests"]
+exclude = ["spikes"]
+pythonVersion = "3.11"
+typeCheckingMode = "standard"

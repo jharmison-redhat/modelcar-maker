@@ -3,8 +3,9 @@ import tomllib
 from pathlib import Path
 
 import pytest
-
-from config_spike.settings import DEFAULTS, config_layers, load_settings
+from config_spike.settings import DEFAULTS
+from config_spike.settings import config_layers
+from config_spike.settings import load_settings
 
 
 def write_toml(path: Path, contents: str) -> Path:
