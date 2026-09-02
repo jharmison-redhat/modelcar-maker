@@ -46,7 +46,7 @@ def _run(cmd: list[str], check: bool = True) -> str:
     return result.stdout
 
 
-def _verify_image(image_tag: str, modelcard_path: str, model_name: str, normalized: str) -> None:
+def _verify_image(image_tag: str, modelcard_path: str, model_name: str, normalized: str, commit: str) -> None:
     """Common image verification: model contents, modelcard path, and labels."""
     unshare: tuple[str, ...] = ()
     if os.getenv("CI") is not None:
@@ -96,7 +96,7 @@ def _verify_image(image_tag: str, modelcard_path: str, model_name: str, normaliz
     labels = inspect_data[0].get("Labels", {})
 
     assert labels.get("model.name") == model_name
-    assert labels.get("model.commit"), "model.commit label should be non-empty"
+    assert labels.get("model.commit") == commit
     assert labels.get("io.k8s.display-name") == f"{normalized}-modelcar"
 
 
@@ -160,6 +160,8 @@ def test_build_real_model_no_push_olot(build_args: list[str]) -> None:
         assert file in file_names
     assert modelcard is not None
     assert modelcard.parts[-1] == EXPECTED_MODELCARD
+    metadata = MODEL_DIR / ".cache" / "huggingface" / "download" / "README.md.metadata"
+    resolved_commit = metadata.read_text().splitlines()[0]
 
     # 2. Load OCI layout to containers-storage, for running with podman
     unshare: tuple[str, ...] = ()
@@ -176,4 +178,10 @@ def test_build_real_model_no_push_olot(build_args: list[str]) -> None:
     )
 
     # 3. Verify image
-    _verify_image(IMAGE_TAG, "/models/README.md", MODEL, NORMALIZED)
+    _verify_image(IMAGE_TAG, "/models/README.md", MODEL, NORMALIZED, resolved_commit)
+
+    # 4. A successful real build honors both cleanup requests.
+    cleanup_result = runner.invoke(cli, [*build_args, "--image-clean-up", "--model-clean-up"])
+    assert cleanup_result.exit_code == 0, cleanup_result.output
+    assert not Model(repo_id=MODEL).exists()
+    assert not OLOT_LAYOUT_DIR.joinpath("index.json").exists()

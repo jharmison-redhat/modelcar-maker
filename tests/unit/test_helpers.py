@@ -3,6 +3,7 @@ from pathlib import Path
 
 import pytest
 
+import modelcar_maker.util.helpers as helpers_module
 from modelcar_maker.util.helpers import Truthy
 from modelcar_maker.util.helpers import atomic_replace_directory
 from modelcar_maker.util.helpers import cleanup
@@ -93,8 +94,10 @@ def test_atomic_replace_restores_live_paths_when_companion_promotion_fails(tmp_p
     live_metadata.write_text("old")
     stage_metadata.write_text("new")
     rename = Path.rename
+    events: list[tuple[Path, Path]] = []
 
     def fail_companion(self: Path, target: Path) -> Path:
+        events.append((self, target))
         if self == stage_metadata:
             raise OSError("promotion failed")
         return rename(self, target)
@@ -110,3 +113,51 @@ def test_atomic_replace_restores_live_paths_when_companion_promotion_fails(tmp_p
 
     assert (live / "marker").read_text() == "old"
     assert live_metadata.read_text() == "old"
+    displaced = next(index for index, event in enumerate(events) if event[1].name.startswith(".live.rollback-"))
+    restored = next(index for index, event in enumerate(events) if event[0].name.startswith(".live.backup-"))
+    assert displaced < restored
+
+
+def test_atomic_replace_rolls_back_keyboard_interrupt(tmp_path: Path, monkeypatch) -> None:
+    live = tmp_path / "live"
+    stage = tmp_path / "stage"
+    live_metadata = tmp_path / "live.json"
+    stage_metadata = tmp_path / "stage.json"
+    live.mkdir()
+    stage.mkdir()
+    (live / "marker").write_text("old")
+    (stage / "marker").write_text("new")
+    live_metadata.write_text("old")
+    stage_metadata.write_text("new")
+    rename = Path.rename
+
+    def interrupt_companion(self: Path, target: Path) -> Path:
+        if self == stage_metadata:
+            raise KeyboardInterrupt()
+        return rename(self, target)
+
+    monkeypatch.setattr(Path, "rename", interrupt_companion)
+
+    with pytest.raises(KeyboardInterrupt):
+        atomic_replace_directory(stage, live, companion_replacements=((stage_metadata, live_metadata),))
+
+    assert (live / "marker").read_text() == "old"
+    assert live_metadata.read_text() == "old"
+
+
+def test_atomic_replace_ignores_backup_cleanup_failure_after_commit(tmp_path: Path, monkeypatch) -> None:
+    live = tmp_path / "live"
+    stage = tmp_path / "stage"
+    live.mkdir()
+    stage.mkdir()
+    (live / "marker").write_text("old")
+    (stage / "marker").write_text("new")
+
+    def fail_cleanup(path: Path) -> None:
+        raise OSError(f"cannot remove {path}")
+
+    monkeypatch.setattr(helpers_module, "remove_path", fail_cleanup)
+
+    atomic_replace_directory(stage, live)
+
+    assert (live / "marker").read_text() == "new"

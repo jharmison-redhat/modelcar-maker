@@ -29,8 +29,8 @@ modelcar-maker [OPTIONS] [MODEL]
 | `--pull` / `--no-pull`                     | Resolve and atomically refresh the base-image cache. `--no-pull` reuses any usable existing cache without identity checks. Default: `--pull`.                                                                                            |
 | `--push` / `--no-push`                     | Push the image after building. Default: `--push`.                                                                                                              |
 | `-a`, `--authfile`                         | Path to skopeo-compatible authfile for registry push (used on push, pull, and inspect actions for `skopeo`, otherwise inherits default behavior).              |
-| `--image-clean-up` / `--no-image-clean-up` | Remove local container image after push. Default: `--no-image-clean-up`.                                                                                       |
-| `--model-clean-up` / `--no-model-clean-up` | Remove downloaded model files after build. Default: `--no-model-clean-up`.                                                                                     |
+| `--image-clean-up` / `--no-image-clean-up` | Remove the local image layout after each requested model attempt. Default: `--no-image-clean-up`.                                                               |
+| `--model-clean-up` / `--no-model-clean-up` | Remove downloaded model files after each requested model attempt. Default: `--no-model-clean-up`.                                                              |
 | `--skip-if-exists` / `--no-skip-if-exists` | Skip if the tag already exists at the registry. Default: `--skip-if-exists`.                                                                                   |
 | `--output text\|json`                       | Output progress text (default) or one final JSON result document on stdout.                                                                                    |
 | `--quiet`                                   | Suppress text progress and success messages; errors still go to stderr.                                                                                        |
@@ -42,8 +42,9 @@ modelcar-maker [OPTIONS] [MODEL]
 
 With `--output json`, stdout contains exactly one JSON document with the overall status, operation duration, and a result
 for each attempted model. Per-model results include status (`success`, `skipped`, or `failed`), durations, errors, and
-available download, build, destination, and push metadata. Logs and diagnostics are written to stderr. A failed model
-makes the command exit nonzero; an operation with both successes and failures has status `partial`.
+available payload, build, destination, and push metadata. The `download` object's `payload_files` and `payload_bytes`
+are totals in the resulting local payload, not counts of bytes transferred. Logs and diagnostics are written to stderr.
+A failed model makes the command exit nonzero; an operation with both successes and failures has status `partial`.
 
 After download, image construction excludes files with any dot-prefixed path component, plus files named
 `Containerfile`, `original`, and `consolidated.safetensors`. Other downloaded files, including PyTorch files, are not

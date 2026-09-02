@@ -4,6 +4,7 @@ import tempfile
 import warnings
 from functools import cached_property
 from pathlib import Path
+from typing import Any
 from typing import Optional
 
 from huggingface_hub import HfApi
@@ -14,6 +15,7 @@ from pydantic import ConfigDict
 from pydantic import Field
 from pydantic import field_validator
 from tqdm import TqdmExperimentalWarning
+from tqdm import tqdm
 from tqdm.rich import tqdm_rich
 
 from ..util import atomic_replace_directory
@@ -28,6 +30,14 @@ warnings.filterwarnings("ignore", category=TqdmExperimentalWarning)
 
 _FULL_SHA = re.compile(r"^[0-9a-f]{40}$")
 _LOCAL_METADATA_ROOT = Path(".cache/huggingface/download")
+
+
+class _DisabledTqdm(tqdm):
+    """A tqdm implementation that cannot be enabled by Hugging Face defaults."""
+
+    def __init__(self, *args: Any, **kwargs: Any) -> None:
+        kwargs["disable"] = True
+        super().__init__(*args, **kwargs)
 
 
 def _relative_file(filename: str) -> Path:
@@ -95,7 +105,7 @@ class Model(BaseModel):
         return path
 
     def download(self, progress: bool = True) -> dict[str, int]:
-        """Download a model from huggingface, either using a repo snapshot or a list of specific files."""
+        """Download a model and return totals for its resulting local payload."""
         sha = HfApi().model_info(self.repo_id).sha
         logger.debug(f"Found commit hash from repo: {sha}")
         if sha is None or _FULL_SHA.fullmatch(sha) is None:
@@ -113,7 +123,9 @@ class Model(BaseModel):
 
         self.path.parent.mkdir(parents=True, exist_ok=True)
         stage = Path(tempfile.mkdtemp(prefix=f".{self.path.name}.stage-", dir=self.path.parent))
+        cache: Optional[Path] = None
         try:
+            cache = Path(tempfile.mkdtemp(prefix=f".{self.path.name}.hf-cache-", dir=self.path.parent))
             seed_directory(self.path, stage)
             if not self.files:
                 logger.info(f"Downloading snapshot of {self.repo_id} at {sha} to {stage}")
@@ -121,7 +133,8 @@ class Model(BaseModel):
                     self.repo_id,
                     revision=sha,
                     local_dir=stage,
-                    tqdm_class=tqdm_rich if progress else None,  # pyright: ignore[reportArgumentType]
+                    cache_dir=cache,
+                    tqdm_class=tqdm_rich if progress else _DisabledTqdm,  # pyright: ignore[reportArgumentType]
                 )
             else:
                 for filename in self.files:
@@ -131,16 +144,22 @@ class Model(BaseModel):
                         revision=sha,
                         local_dir=stage,
                         filename=filename,
-                        tqdm_class=tqdm_rich if progress else None,  # pyright: ignore[reportArgumentType]
+                        cache_dir=cache,
+                        tqdm_class=tqdm_rich if progress else _DisabledTqdm,  # pyright: ignore[reportArgumentType]
                     )
             _validate_stage_revision(stage, expected_files, sha)
             reconcile_model_files(stage, expected_files)
             atomic_replace_directory(stage, self.path)
         finally:
             remove_path(stage)
+            if cache is not None:
+                remove_path(cache)
         self.commit = sha
         payload_files = [file for file in self.walk() if not file.is_relative_to(self.path / _LOCAL_METADATA_ROOT)]
-        return {"files": len(payload_files), "bytes": sum(file.stat().st_size for file in payload_files)}
+        return {
+            "payload_files": len(payload_files),
+            "payload_bytes": sum(file.stat().st_size for file in payload_files),
+        }
 
     def cleanup(self) -> bool:
         """Clean up a downloaded model and all files"""

@@ -1,3 +1,5 @@
+import os
+import shutil
 from pathlib import Path
 
 import pytest
@@ -43,10 +45,10 @@ def test_download_pins_revision_reconciles_selection_and_promotes(tmp_path: Path
     live = tmp_path / "models" / "org--model"
     live.mkdir(parents=True)
     (live / "stale.bin").write_text("old")
-    revisions = []
+    invocations = []
 
-    def download(*, repo_id, revision, local_dir, filename, tqdm_class):
-        revisions.append(revision)
+    def download(*, repo_id, revision, local_dir, filename, cache_dir, tqdm_class):
+        invocations.append((revision, Path(cache_dir), tqdm_class))
         target = Path(local_dir) / filename
         target.parent.mkdir(parents=True, exist_ok=True)
         target.write_text("new")
@@ -61,9 +63,14 @@ def test_download_pins_revision_reconciles_selection_and_promotes(tmp_path: Path
 
     stats = model.download(progress=False)
 
-    assert revisions == [SHA]
+    assert [invocation[0] for invocation in invocations] == [SHA]
+    cache_dir = invocations[0][1]
+    assert not cache_dir.exists()
+    progress = invocations[0][2](total=1)
+    assert progress.disable is True
+    progress.close()
     assert model.commit == SHA
-    assert stats == {"files": 1, "bytes": 3}
+    assert stats == {"payload_files": 1, "payload_bytes": 3}
     assert (model.path / "weights" / "model.bin").read_text() == "new"
     assert not (model.path / "stale.bin").exists()
 
@@ -74,8 +81,9 @@ def test_failed_download_preserves_complete_live_model(tmp_path: Path, monkeypat
     live.mkdir(parents=True)
     (live / "model.bin").write_text("old-complete")
 
-    def fail_snapshot(repo_id, revision, local_dir, tqdm_class):
+    def fail_snapshot(repo_id, revision, local_dir, cache_dir, tqdm_class):
         assert revision == SHA
+        assert Path(cache_dir) != Path(local_dir)
         (Path(local_dir) / "partial.bin").write_text("partial")
         raise RuntimeError("download failed")
 
@@ -90,6 +98,44 @@ def test_failed_download_preserves_complete_live_model(tmp_path: Path, monkeypat
     assert not (live / "partial.bin").exists()
     assert model.commit is None
     assert not list(live.parent.glob(".org--model.stage-*"))
+    assert not list(live.parent.glob(".org--model.hf-cache-*"))
+
+
+def test_isolated_hf_cache_prevents_global_cache_copy_from_mutating_live_hardlink(tmp_path: Path, monkeypatch) -> None:
+    monkeypatch.chdir(tmp_path)
+    live = tmp_path / "models" / "org--model"
+    selected = live / "weights" / "model.bin"
+    selected.parent.mkdir(parents=True)
+    selected.write_text("old-complete")
+    global_cache = tmp_path / "global-hf-cache"
+    global_cache.mkdir()
+    cached_blob = global_cache / "changed"
+    cached_blob.write_text("corrupting-cache-hit")
+    operation_caches: list[Path] = []
+
+    def fail_safely(*, repo_id, revision, local_dir, filename, cache_dir, tqdm_class):
+        target = Path(local_dir) / filename
+        assert os.stat(target).st_ino == os.stat(selected).st_ino
+        if cache_dir is None or Path(cache_dir) == global_cache:
+            shutil.copyfile(cached_blob, target)
+            raise RuntimeError("failed after risky in-place cache copy")
+        operation_cache = Path(cache_dir)
+        operation_caches.append(operation_cache)
+        assert operation_cache != global_cache
+        assert not operation_cache.is_relative_to(live)
+        (operation_cache / "incomplete").write_text("partial")
+        raise RuntimeError("isolated transfer failed")
+
+    monkeypatch.setattr(model_module, "HfApi", FakeApi)
+    monkeypatch.setattr(model_module, "hf_hub_download", fail_safely)
+    model = Model(repo_id="org/model", files=["weights/model.bin"])
+
+    with pytest.raises(RuntimeError, match="isolated transfer failed"):
+        model.download(progress=False)
+
+    assert selected.read_text() == "old-complete"
+    assert len(operation_caches) == 1
+    assert not operation_caches[0].exists()
 
 
 def test_unverified_staged_revision_does_not_replace_live_model(tmp_path: Path, monkeypatch) -> None:

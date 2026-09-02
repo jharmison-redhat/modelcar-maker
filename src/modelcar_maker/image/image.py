@@ -8,6 +8,7 @@ import subprocess
 import tempfile
 from functools import cached_property
 from pathlib import Path
+from typing import Any
 from typing import Optional
 
 from olot.backend.skopeo import skopeo_inspect
@@ -28,6 +29,100 @@ from ..util import remove_path
 from ..util import settings
 
 _OCI_TAG = re.compile(r"^[A-Za-z0-9_][A-Za-z0-9_.-]{0,127}$")
+_SHA256_DIGEST = re.compile(r"^sha256:[0-9a-f]{64}$")
+_IMAGE_INDEX_MEDIA_TYPES = {
+    "application/vnd.oci.image.index.v1+json",
+    "application/vnd.docker.distribution.manifest.list.v2+json",
+}
+_IMAGE_MANIFEST_MEDIA_TYPES = {
+    "application/vnd.oci.image.manifest.v1+json",
+    "application/vnd.docker.distribution.manifest.v2+json",
+}
+
+
+def _json_object(contents: str, description: str) -> dict[str, Any]:
+    try:
+        value = json.loads(contents)
+    except json.JSONDecodeError as error:
+        raise ValueError(f"Invalid JSON in {description}") from error
+    if not isinstance(value, dict):
+        raise ValueError(f"Expected a JSON object in {description}")
+    return value
+
+
+def _validate_descriptor(layout: Path, descriptor: object, seen: set[str]) -> str:
+    if not isinstance(descriptor, dict):
+        raise ValueError("OCI descriptor must be an object")
+    digest = descriptor.get("digest")
+    size = descriptor.get("size")
+    media_type = descriptor.get("mediaType")
+    if not isinstance(digest, str) or _SHA256_DIGEST.fullmatch(digest) is None:
+        raise ValueError("OCI descriptor has an invalid digest")
+    if not isinstance(size, int) or isinstance(size, bool) or size < 0:
+        raise ValueError(f"OCI descriptor {digest} has an invalid size")
+    if not isinstance(media_type, str):
+        raise ValueError(f"OCI descriptor {digest} has no media type")
+
+    blob = layout / "blobs" / "sha256" / digest.removeprefix("sha256:")
+    try:
+        if blob.stat().st_size != size:
+            raise ValueError(f"OCI blob {digest} does not match its descriptor size")
+        hasher = hashlib.sha256()
+        with blob.open("rb") as blob_file:
+            while chunk := blob_file.read(1024 * 1024):
+                hasher.update(chunk)
+    except OSError as error:
+        raise ValueError(f"OCI blob {digest} is missing or unreadable") from error
+    if hasher.hexdigest() != digest.removeprefix("sha256:"):
+        raise ValueError(f"OCI blob {digest} does not match its descriptor digest")
+    if digest in seen:
+        return media_type
+    seen.add(digest)
+
+    if media_type not in _IMAGE_INDEX_MEDIA_TYPES | _IMAGE_MANIFEST_MEDIA_TYPES:
+        return media_type
+    document = _json_object(blob.read_text(), f"OCI blob {digest}")
+    if document.get("schemaVersion") != 2:
+        raise ValueError(f"OCI image document {digest} has an invalid schema version")
+    if media_type in _IMAGE_INDEX_MEDIA_TYPES:
+        manifests = document.get("manifests")
+        if not isinstance(manifests, list) or not manifests:
+            raise ValueError(f"OCI image index {digest} has no manifests")
+        for child in manifests:
+            child_media_type = _validate_descriptor(layout, child, seen)
+            if child_media_type not in _IMAGE_INDEX_MEDIA_TYPES | _IMAGE_MANIFEST_MEDIA_TYPES:
+                raise ValueError(f"OCI image index {digest} references a non-image manifest")
+    else:
+        config = document.get("config")
+        layers = document.get("layers")
+        if not isinstance(config, dict) or not isinstance(layers, list):
+            raise ValueError(f"OCI image manifest {digest} has invalid config or layers")
+        _validate_descriptor(layout, config, seen)
+        for layer in layers:
+            _validate_descriptor(layout, layer, seen)
+    return media_type
+
+
+def _validate_oci_layout(path: Path, expected_digest: Optional[str] = None) -> None:
+    layout = _json_object((path / "oci-layout").read_text(), "oci-layout")
+    if layout.get("imageLayoutVersion") != "1.0.0":
+        raise ValueError("Unsupported or missing OCI image layout version")
+    index = _json_object((path / "index.json").read_text(), "index.json")
+    if index.get("schemaVersion") != 2:
+        raise ValueError("OCI index has an invalid schema version")
+    manifests = index.get("manifests")
+    if not isinstance(manifests, list) or not manifests:
+        raise ValueError("OCI index has no manifests")
+    seen: set[str] = set()
+    top_digests: list[str] = []
+    for descriptor in manifests:
+        media_type = _validate_descriptor(path, descriptor, seen)
+        if media_type not in _IMAGE_INDEX_MEDIA_TYPES | _IMAGE_MANIFEST_MEDIA_TYPES:
+            raise ValueError("OCI index references a non-image manifest")
+        assert isinstance(descriptor, dict)
+        top_digests.append(descriptor["digest"])
+    if expected_digest is not None and top_digests[0] != expected_digest:
+        raise ValueError(f"Staged top manifest {top_digests[0]} does not match resolved digest {expected_digest}")
 
 
 def _reference_at_digest(reference: str, digest: str) -> str:
@@ -85,15 +180,12 @@ class BaseImage(BaseModel):
         return self.path.with_name(f"{self.path.name}.metadata.json")
 
     @staticmethod
-    def _layout_is_usable(path: Path) -> bool:
-        index = path / "index.json"
-        if not index.is_file():
-            return False
+    def _layout_is_usable(path: Path, expected_digest: Optional[str] = None) -> bool:
         try:
-            data = json.loads(index.read_text())
-        except (OSError, json.JSONDecodeError):
+            _validate_oci_layout(path, expected_digest)
+        except (OSError, ValueError, KeyError):
             return False
-        return isinstance(data, dict) and isinstance(data.get("manifests"), list) and bool(data["manifests"])
+        return True
 
     @property
     def exists(self) -> bool:
@@ -107,14 +199,14 @@ class BaseImage(BaseModel):
 
     def _resolve_digest(self) -> str:
         manifest = self.skopeo.inspect(f"docker://{self.tagged_image}")
-        if manifest is None:
+        if not manifest:
             raise RuntimeError(f"Unable to resolve base image digest for {self.tagged_image}")
         return f"sha256:{hashlib.sha256(manifest.encode('utf-8')).hexdigest()}"
 
     def _cache_matches(self, digest: str) -> bool:
         metadata = self._read_metadata()
         return (
-            self.exists
+            self._layout_is_usable(self.path, expected_digest=digest)
             and metadata is not None
             and metadata.requested_reference == self.tagged_image
             and metadata.resolved_digest == digest
@@ -148,8 +240,8 @@ class BaseImage(BaseModel):
             result = self.skopeo.pull(base_image=pinned_reference, dest=stage)
             if result.returncode != 0:
                 raise RuntimeError(f"Pull of {pinned_reference} to {stage} failed: {result}")
-            if not self._layout_is_usable(stage):
-                raise RuntimeError(f"Pulled base image did not produce a usable OCI layout: {stage}")
+            if not self._layout_is_usable(stage, expected_digest=digest):
+                raise RuntimeError(f"Pulled base image did not produce a valid OCI layout matching {digest}: {stage}")
             metadata = BaseCacheMetadata(requested_reference=self.tagged_image, resolved_digest=digest)
             staged_metadata.write_text(metadata.model_dump_json(indent=2) + "\n")
             atomic_replace_directory(
@@ -258,9 +350,9 @@ class ModelcarImage(BaseModel):
 
     def build(self) -> dict[str, int | None]:
         """Downloads a base image, prepares a layout directory, adds model files, and configures image metadata"""
-        if self.exists_local():
+        if self.layout_dir.exists() or self.layout_dir.is_symlink():
             logger.debug(f"Before build, cleaning out existing layout at {self.layout_dir}")
-            self.cleanup()
+            remove_path(self.layout_dir)
         self.base_image.copy_to(self.layout_dir)
 
         labels = {k: v.format(**self._rendered_labels) for k, v in settings.image.labels.items()}
@@ -268,7 +360,7 @@ class ModelcarImage(BaseModel):
         annotations = {k: v.format(**self._rendered_labels) for k, v in settings.image.annotations.items()}
         logger.debug(f"Rendered annotations: {annotations}")
         model_card, model_files = self.model.model_files()
-        filtered_model_files = [file for file in model_files if self._should_include(file)]
+        filtered_model_files = [file for file in model_files if self._should_include(file.relative_to(self.model.path))]
 
         logger.info(f"Adding model files from {self.model.path} to {self.layout_dir} now")
         logger.debug(f"model_files={filtered_model_files}")
@@ -294,13 +386,15 @@ class ModelcarImage(BaseModel):
         except (OSError, json.JSONDecodeError, AttributeError):
             return None
 
-    def push(self) -> Optional[str]:
+    def push(self) -> str:
         """Pushes an image from the local layout directory to the remote registry"""
         result = self.skopeo.push(src=self.layout_dir, dest=self.tagged_image)
         if result.returncode != 0:
             raise RuntimeError(f"Failed to push {self.tagged_image}: {result}")
         manifest = self.skopeo.inspect(reference=f"docker://{self.tagged_image}")
-        return f"sha256:{hashlib.sha256(manifest.encode('utf-8')).hexdigest()}" if manifest is not None else None
+        if not manifest:
+            raise RuntimeError(f"Pushed {self.tagged_image}, but could not determine its remote digest")
+        return f"sha256:{hashlib.sha256(manifest.encode('utf-8')).hexdigest()}"
 
     @staticmethod
     def _should_include(file: Path) -> bool:

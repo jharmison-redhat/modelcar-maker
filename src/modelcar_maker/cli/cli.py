@@ -39,6 +39,27 @@ class ModelResult:
     push: dict[str, str | None] | None = None
 
 
+def _requested_cleanup(
+    image: Optional[ModelcarImage],
+    model: Optional[Model],
+    image_cleanup: bool,
+    model_cleanup: bool,
+) -> list[str]:
+    """Attempt requested cleanups independently and return their errors."""
+    errors: list[str] = []
+    if image_cleanup and image is not None:
+        try:
+            image.cleanup()
+        except Exception as error:
+            errors.append(f"image cleanup failed: {error}")
+    if model_cleanup and model is not None:
+        try:
+            model.cleanup()
+        except Exception as error:
+            errors.append(f"model cleanup failed: {error}")
+    return errors
+
+
 def _emit(message: str, enabled: bool) -> None:
     if enabled:
         rprint(message)
@@ -217,11 +238,19 @@ def build(
         update=pull,
     )
     base_prepared = False
+    operation_error: str | None = None
 
     logger.info(f"Processing the following model repo_id list: {models}")
     for repo_id in models:
         model_started = time.monotonic()
-        image = None
+        model: Optional[Model] = None
+        image: Optional[ModelcarImage] = None
+        result_status = "success"
+        primary_error: Optional[Exception] = None
+        download: dict[str, int] | None = None
+        build_stats: dict[str, int | None] | None = None
+        digest: str | None = None
+        pushed_digest: str | None = None
         try:
             _emit(f"Processing {repo_id}", text_output)
             model_files = files if files else settings.models.get(repo_id, {}).get("files", [])
@@ -232,60 +261,51 @@ def build(
             )
             if skip_if_exists and image.exists_remote():
                 _emit(f"Skipping build of {image.tagged_image} as it exists in the registry", text_output)
-                if image_cleanup and image.exists_local():
-                    image.cleanup()
-                if model_cleanup and model.exists():
-                    model.cleanup()
-                results.append(
-                    ModelResult(
-                        repo_id, "skipped", time.monotonic() - model_started, destination_image=image.tagged_image
-                    )
-                )
-                continue
-            if not base_prepared:
-                _emit(f"Preparing base image cache for {base_image} at {base.path}", text_output)
-                base.pull()
-                base_prepared = True
-            _emit(f"Downloading {repo_id} to {model.path}", text_output)
-            download = model.download(progress=sys.stderr.isatty() and output == "text" and not quiet)
-            _emit(f"Building {image.tagged_image} in {image.layout_dir}", text_output)
-            build_stats = image.build()
-            digest = image.digest()
-            pushed_digest = None
-            if push:
-                _emit(f"Pushing {image.tagged_image}", text_output)
-                pushed_digest = image.push()
-            if image_cleanup:
-                image.cleanup()
-            if model_cleanup:
-                model.cleanup()
-            results.append(
-                ModelResult(
-                    repo_id=repo_id,
-                    status="success",
-                    duration_seconds=time.monotonic() - model_started,
-                    destination_image=image.tagged_image,
-                    destination_digest=digest,
-                    download=download,
-                    build=build_stats,
-                    push={"digest": pushed_digest} if push else None,
-                )
-            )
+                result_status = "skipped"
+            else:
+                if not base_prepared:
+                    _emit(f"Preparing base image cache for {base_image} at {base.path}", text_output)
+                    try:
+                        base.pull()
+                    except Exception as error:
+                        operation_error = f"Failed to prepare shared base image cache for {base_image}: {error}"
+                        raise RuntimeError(operation_error) from error
+                    base_prepared = True
+                _emit(f"Downloading {repo_id} to {model.path}", text_output)
+                download = model.download(progress=sys.stderr.isatty() and output == "text" and not quiet)
+                _emit(f"Building {image.tagged_image} in {image.layout_dir}", text_output)
+                build_stats = image.build()
+                digest = image.digest()
+                if push:
+                    _emit(f"Pushing {image.tagged_image}", text_output)
+                    pushed_digest = image.push()
         except Exception as error:
+            primary_error = error
+            result_status = "failed"
             logger.error("Failed processing %s: %s", repo_id, error)
-            results.append(
-                ModelResult(
-                    repo_id,
-                    "failed",
-                    time.monotonic() - model_started,
-                    str(error),
-                    image.tagged_image if image else None,
-                )
+        cleanup_errors = _requested_cleanup(image, model, image_cleanup, model_cleanup)
+        for cleanup_error in cleanup_errors:
+            logger.error("Failed processing %s: %s", repo_id, cleanup_error)
+        if primary_error is None and cleanup_errors:
+            result_status = "failed"
+        results.append(
+            ModelResult(
+                repo_id=repo_id,
+                status=result_status,
+                duration_seconds=time.monotonic() - model_started,
+                error=str(primary_error) if primary_error is not None else "; ".join(cleanup_errors) or None,
+                destination_image=image.tagged_image if image else None,
+                destination_digest=digest,
+                download=download,
+                build=build_stats,
+                push={"digest": pushed_digest} if push and pushed_digest is not None else None,
             )
-            if fail_fast:
-                break
+        )
+        if operation_error is not None or (result_status == "failed" and fail_fast):
+            break
     failed = sum(result.status == "failed" for result in results)
-    status = "failed" if failed == len(results) else "partial" if failed else "success"
+    succeeded = sum(result.status == "success" for result in results)
+    status = "partial" if failed and succeeded else "failed" if failed else "success"
     if output == "json":
         typer.echo(
             json.dumps(
@@ -293,7 +313,7 @@ def build(
                     "status": status,
                     "duration_seconds": time.monotonic() - started,
                     "results": [asdict(result) for result in results],
-                    "error": None,
+                    "error": operation_error,
                 }
             )
         )

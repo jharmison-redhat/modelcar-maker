@@ -104,7 +104,7 @@ def atomic_replace_directory(
     destination: Path,
     companion_replacements: Iterable[tuple[Path, Path]] = (),
 ) -> None:
-    """Promote same-parent staged paths, restoring all live paths on handled failure."""
+    """Promote same-parent staged paths, restoring all live paths on failure."""
     replacements = [(staged, destination), *companion_replacements]
     for staged_path, destination_path in replacements:
         if staged_path.parent.resolve() != destination_path.parent.resolve():
@@ -123,17 +123,36 @@ def atomic_replace_directory(
         for staged_path, destination_path in replacements:
             staged_path.rename(destination_path)
             promoted.append(destination_path)
-    except Exception:
+    except BaseException:
+        displaced: list[Path] = []
+        rollback_errors: list[BaseException] = []
         for promoted_path in reversed(promoted):
-            remove_path(promoted_path)
-        restore_errors = []
+            if not promoted_path.exists() and not promoted_path.is_symlink():
+                continue
+            try:
+                rollback_path = promoted_path.with_name(f".{promoted_path.name}.rollback-{uuid.uuid4().hex}")
+                promoted_path.rename(rollback_path)
+                displaced.append(rollback_path)
+            except BaseException as error:
+                rollback_errors.append(error)
         for backup, destination_path in reversed(backups):
+            if destination_path.exists() or destination_path.is_symlink():
+                rollback_errors.append(RuntimeError(f"Unable to clear promoted destination {destination_path}"))
+                continue
             try:
                 backup.rename(destination_path)
-            except OSError as error:
-                restore_errors.append(error)
-        if restore_errors:
-            raise RuntimeError("Failed to restore live paths after promotion failure") from restore_errors[0]
+            except BaseException as error:
+                rollback_errors.append(error)
+        for rollback_path in displaced:
+            try:
+                remove_path(rollback_path)
+            except BaseException:
+                pass
+        if rollback_errors:
+            raise RuntimeError("Failed to restore live paths after promotion failure") from rollback_errors[0]
         raise
     for backup, _ in backups:
-        remove_path(backup)
+        try:
+            remove_path(backup)
+        except BaseException:
+            pass

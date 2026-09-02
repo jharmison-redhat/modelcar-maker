@@ -13,7 +13,31 @@ from modelcar_maker.image import Skopeo
 from modelcar_maker.image.image import _reference_at_digest
 from modelcar_maker.model import Model
 
-REMOTE_MANIFEST = '{"schemaVersion":2}'
+CONFIG = b'{"architecture":"amd64","os":"linux"}'
+
+
+def descriptor(contents: bytes, media_type: str) -> dict[str, str | int]:
+    return {
+        "mediaType": media_type,
+        "digest": f"sha256:{hashlib.sha256(contents).hexdigest()}",
+        "size": len(contents),
+    }
+
+
+def manifest_contents(marker: str) -> bytes:
+    layer = marker.encode()
+    return json.dumps(
+        {
+            "schemaVersion": 2,
+            "mediaType": "application/vnd.oci.image.manifest.v1+json",
+            "config": descriptor(CONFIG, "application/vnd.oci.image.config.v1+json"),
+            "layers": [descriptor(layer, "application/vnd.oci.image.layer.v1.tar")],
+        },
+        separators=(",", ":"),
+    ).encode()
+
+
+REMOTE_MANIFEST = manifest_contents("new").decode()
 REMOTE_DIGEST = f"sha256:{hashlib.sha256(REMOTE_MANIFEST.encode()).hexdigest()}"
 
 
@@ -29,10 +53,25 @@ def test_reference_at_digest_replaces_tag(reference: str, expected: str) -> None
     assert _reference_at_digest(reference, REMOTE_DIGEST) == expected
 
 
-def write_layout(path: Path, marker: str) -> None:
+def write_blob(path: Path, contents: bytes) -> None:
+    digest = hashlib.sha256(contents).hexdigest()
+    blob = path / "blobs" / "sha256" / digest
+    blob.parent.mkdir(parents=True, exist_ok=True)
+    blob.write_bytes(contents)
+
+
+def write_layout(path: Path, marker: str) -> str:
     path.mkdir(parents=True, exist_ok=True)
-    (path / "index.json").write_text(json.dumps({"manifests": [{"digest": f"sha256:{marker}"}]}))
+    manifest = manifest_contents(marker)
+    layer = marker.encode()
+    write_blob(path, CONFIG)
+    write_blob(path, layer)
+    write_blob(path, manifest)
+    manifest_descriptor = descriptor(manifest, "application/vnd.oci.image.manifest.v1+json")
+    (path / "oci-layout").write_text(json.dumps({"imageLayoutVersion": "1.0.0"}))
+    (path / "index.json").write_text(json.dumps({"schemaVersion": 2, "manifests": [manifest_descriptor]}))
     (path / "marker").write_text(marker)
+    return str(manifest_descriptor["digest"])
 
 
 def write_metadata(base: BaseImage, reference: str, digest: str) -> None:
@@ -50,7 +89,7 @@ def make_base(path: Path, update: bool = True) -> BaseImage:
 
 def test_matching_cache_metadata_avoids_pull(tmp_path: Path, monkeypatch) -> None:
     base = make_base(tmp_path / "base")
-    write_layout(base.path, "old")
+    write_layout(base.path, "new")
     write_metadata(base, base.tagged_image, REMOTE_DIGEST)
     pulls = []
     monkeypatch.setattr(image_module, "skopeo_inspect", lambda **kwargs: REMOTE_MANIFEST)
@@ -59,7 +98,7 @@ def test_matching_cache_metadata_avoids_pull(tmp_path: Path, monkeypatch) -> Non
     base.pull()
 
     assert pulls == []
-    assert (base.path / "marker").read_text() == "old"
+    assert (base.path / "marker").read_text() == "new"
 
 
 def test_pull_atomically_replaces_layout_and_metadata(tmp_path: Path, monkeypatch) -> None:
@@ -161,6 +200,105 @@ def test_no_pull_without_cache_fails_explicitly_when_build_needs_it(tmp_path: Pa
         base.copy_to(tmp_path / "build")
 
 
+@pytest.mark.parametrize("problem", ["missing-layout", "missing-blob", "missing-child", "corrupt-blob", "wrong-size"])
+def test_oci_layout_validation_rejects_incomplete_or_corrupt_content(tmp_path: Path, problem: str) -> None:
+    base = make_base(tmp_path / "base", update=False)
+    write_layout(base.path, "valid")
+    index = json.loads((base.path / "index.json").read_text())
+    manifest_descriptor = index["manifests"][0]
+    manifest_blob = base.path / "blobs" / "sha256" / manifest_descriptor["digest"].removeprefix("sha256:")
+
+    if problem == "missing-layout":
+        (base.path / "oci-layout").unlink()
+    elif problem == "missing-blob":
+        manifest_blob.unlink()
+    elif problem == "missing-child":
+        manifest = json.loads(manifest_blob.read_text())
+        config_digest = manifest["config"]["digest"].removeprefix("sha256:")
+        (base.path / "blobs" / "sha256" / config_digest).unlink()
+    elif problem == "corrupt-blob":
+        contents = manifest_blob.read_bytes()
+        manifest_blob.write_bytes(b"x" + contents[1:])
+    else:
+        manifest_descriptor["size"] += 1
+        (base.path / "index.json").write_text(json.dumps(index))
+
+    assert not base.exists
+
+
+def test_pull_rejects_top_manifest_digest_mismatch_and_preserves_cache(tmp_path: Path, monkeypatch) -> None:
+    base = make_base(tmp_path / "base")
+    write_layout(base.path, "old")
+    write_metadata(base, base.tagged_image, "sha256:old")
+
+    def pull(*, base_image, dest, **kwargs):
+        write_layout(Path(dest), "different")
+        return subprocess.CompletedProcess([], 0)
+
+    monkeypatch.setattr(image_module, "skopeo_inspect", lambda **kwargs: REMOTE_MANIFEST)
+    monkeypatch.setattr(image_module, "skopeo_pull", pull)
+
+    with pytest.raises(RuntimeError, match="matching"):
+        base.pull()
+
+    assert (base.path / "marker").read_text() == "old"
+
+
+def test_push_requires_remote_digest_after_successful_copy(tmp_path: Path, monkeypatch) -> None:
+    monkeypatch.chdir(tmp_path)
+    image = ModelcarImage(
+        base_image=make_base(tmp_path / "base"),
+        model=Model(repo_id="org/model"),
+        skopeo=Skopeo(),
+        registry="registry",
+        repository="repository",
+    )
+    monkeypatch.setattr(image_module, "skopeo_push", lambda **kwargs: subprocess.CompletedProcess([], 0))
+    monkeypatch.setattr(image_module, "skopeo_inspect", lambda **kwargs: None)
+
+    with pytest.raises(RuntimeError, match="could not determine its remote digest"):
+        image.push()
+
+
+def test_build_removes_partial_layout_without_index(tmp_path: Path, monkeypatch) -> None:
+    workspace = tmp_path / ".workspace"
+    workspace.mkdir()
+    monkeypatch.chdir(workspace)
+    base = make_base(tmp_path / "base")
+    model = Model(repo_id="org/model", commit="a" * 40)
+    model.path.mkdir(parents=True)
+    visible_model_file = model.path / "weights.bin"
+    visible_model_file.write_text("weights")
+    image = ModelcarImage(
+        base_image=base,
+        model=model,
+        skopeo=Skopeo(),
+        registry="registry",
+        repository="repository",
+    )
+    image.layout_dir.mkdir(parents=True)
+    (image.layout_dir / "stale").write_text("stale")
+
+    def copy_to(self: BaseImage, dest: Path) -> None:
+        assert not dest.exists()
+        dest.mkdir()
+        (dest / "fresh").write_text("fresh")
+
+    build_arguments = {}
+
+    def build_layers(**kwargs) -> None:
+        build_arguments.update(kwargs)
+
+    monkeypatch.setattr(BaseImage, "copy_to", copy_to)
+    monkeypatch.setattr(image_module, "oci_layers_on_top", build_layers)
+
+    image.build()
+
+    assert not (image.layout_dir / "stale").exists()
+    assert (image.layout_dir / "fresh").read_text() == "fresh"
+    assert build_arguments["model_files"] == [visible_model_file]
+
+
 def test_image_boundary_validation_and_extra_fields(tmp_path: Path) -> None:
     skopeo = Skopeo()
     base = make_base(tmp_path / "base")
@@ -192,6 +330,6 @@ def test_image_digest_reads_oci_index(tmp_path: Path, monkeypatch) -> None:
         registry="registry",
         repository="repository",
     )
-    write_layout(image.layout_dir, "manifest")
+    expected = write_layout(image.layout_dir, "manifest")
 
-    assert image.digest() == "sha256:manifest"
+    assert image.digest() == expected
