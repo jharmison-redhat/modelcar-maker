@@ -32,10 +32,18 @@ modelcar-maker [OPTIONS] [MODEL]
 | `--image-clean-up` / `--no-image-clean-up` | Remove local container image after push. Default: `--no-image-clean-up`.                                                                                       |
 | `--model-clean-up` / `--no-model-clean-up` | Remove downloaded model files after build. Default: `--no-model-clean-up`.                                                                                     |
 | `--skip-if-exists` / `--no-skip-if-exists` | Skip if the tag already exists at the registry. Default: `--skip-if-exists`.                                                                                   |
+| `--output text\|json`                       | Output progress text (default) or one final JSON result document on stdout.                                                                                    |
+| `--quiet`                                   | Suppress text progress and success messages; errors still go to stderr.                                                                                        |
+| `--fail-fast`                               | Stop after the first model-specific failure. By default remaining models continue.                                                                             |
 | `-v`, `--verbose`                          | Increase logging verbosity. Repeat for more.                                                                                                                   |
 | `-V`, `--version`                          | Print version and exit.                                                                                                                                        |
 
 **Image tag format:** `{registry}/{repository}:{specified tag or normalized-model}-modelcar`
+
+With `--output json`, stdout contains exactly one JSON document with the overall status, operation duration, and a result
+for each attempted model. Per-model results include status (`success`, `skipped`, or `failed`), durations, errors, and
+available download, build, destination, and push metadata. Logs and diagnostics are written to stderr. A failed model
+makes the command exit nonzero; an operation with both successes and failures has status `partial`.
 
 When no tag is specified, the model repo ID is normalized for use as a tag: slashes become `--`, dots become `_`, and
 the string is lowercased before appending `-modelcar`. For example, `meta-llama/Llama-3.2-3B-Instruct` produces tag

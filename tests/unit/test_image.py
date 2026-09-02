@@ -168,3 +168,17 @@ def test_image_boundary_validation_and_extra_fields(tmp_path: Path) -> None:
         )
     with pytest.raises(ValidationError):
         Model(repo_id="org/model", unexpected=True)
+
+
+def test_image_digest_reads_oci_index(tmp_path: Path, monkeypatch) -> None:
+    monkeypatch.chdir(tmp_path)
+    image = ModelcarImage(
+        base_image=make_base(tmp_path / "base"),
+        model=Model(repo_id="org/model"),
+        skopeo=Skopeo(),
+        registry="registry",
+        repository="repository",
+    )
+    write_layout(image.layout_dir, "manifest")
+
+    assert image.digest() == "sha256:manifest"

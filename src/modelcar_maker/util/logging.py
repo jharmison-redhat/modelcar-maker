@@ -22,12 +22,16 @@ def make_logger(verbosity: int | None = None) -> logging.Logger:
             stderr.setLevel(40)
         logger.addHandler(stderr)
     else:
+        # CliRunner and redirected invocations replace stderr after import.
+        # Keep diagnostics with the current process stderr, never stdout.
+        stderr = logger.handlers[0]
+        if isinstance(stderr, logging.StreamHandler):
+            stderr.setStream(sys.stderr)
         if verbosity is not None:
-            stderr = logger.handlers[0]
             # Never lower the verbosity after it's been made high
             stderr.setLevel(min(stderr.level, 40 - (min(3, verbosity) * 10)))
 
     return logger
 
 
-logger = make_logger()
+logger = logging.getLogger("modelcar-maker")

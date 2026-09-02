@@ -248,7 +248,7 @@ class ModelcarImage(BaseModel):
         """Cleans up a local OCI layout directory"""
         return cleanup(self.layout_dir)
 
-    def build(self) -> None:
+    def build(self) -> dict[str, int | None]:
         """Downloads a base image, prepares a layout directory, adds model files, and configures image metadata"""
         if self.exists_local():
             logger.debug(f"Before build, cleaning out existing layout at {self.layout_dir}")
@@ -272,12 +272,27 @@ class ModelcarImage(BaseModel):
             annotations=annotations,
             root_dir=self.model.path,
         )
+        return {
+            "files": len(filtered_model_files) + (1 if model_card is not None else 0),
+            "layers": len(filtered_model_files) + (1 if model_card is not None else 0),
+        }
 
-    def push(self) -> None:
+    def digest(self) -> Optional[str]:
+        """Return the OCI manifest digest recorded by this layout, when available."""
+        try:
+            manifests = json.loads(self.layout_dir.joinpath("index.json").read_text()).get("manifests", [])
+            digest = manifests[0].get("digest") if manifests else None
+            return digest if isinstance(digest, str) else None
+        except (OSError, json.JSONDecodeError, AttributeError):
+            return None
+
+    def push(self) -> Optional[str]:
         """Pushes an image from the local layout directory to the remote registry"""
         result = self.skopeo.push(src=self.layout_dir, dest=self.tagged_image)
         if result.returncode != 0:
             raise RuntimeError(f"Failed to push {self.tagged_image}: {result}")
+        manifest = self.skopeo.inspect(reference=f"docker://{self.tagged_image}")
+        return f"sha256:{hashlib.sha256(manifest.encode('utf-8')).hexdigest()}" if manifest is not None else None
 
     @staticmethod
     def _should_include(file: Path) -> bool:

@@ -59,10 +59,11 @@ def test_download_pins_revision_reconciles_selection_and_promotes(tmp_path: Path
     monkeypatch.setattr(model_module, "hf_hub_download", download)
     model = Model(repo_id="org/model", files=["weights/model.bin"])
 
-    model.download()
+    stats = model.download(progress=False)
 
     assert revisions == [SHA]
     assert model.commit == SHA
+    assert stats == {"files": 1, "bytes": 3}
     assert (model.path / "weights" / "model.bin").read_text() == "new"
     assert not (model.path / "stale.bin").exists()
 

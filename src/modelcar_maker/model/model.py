@@ -94,7 +94,7 @@ class Model(BaseModel):
             raise ValueError("Generated model path is outside the models root")
         return path
 
-    def download(self) -> None:
+    def download(self, progress: bool = True) -> dict[str, int]:
         """Download a model from huggingface, either using a repo snapshot or a list of specific files."""
         sha = HfApi().model_info(self.repo_id).sha
         logger.debug(f"Found commit hash from repo: {sha}")
@@ -121,7 +121,7 @@ class Model(BaseModel):
                     self.repo_id,
                     revision=sha,
                     local_dir=stage,
-                    tqdm_class=tqdm_rich,
+                    tqdm_class=tqdm_rich if progress else None,
                 )  # type: ignore[arg-type]
             else:
                 for filename in self.files:
@@ -131,7 +131,7 @@ class Model(BaseModel):
                         revision=sha,
                         local_dir=stage,
                         filename=filename,
-                        tqdm_class=tqdm_rich,
+                        tqdm_class=tqdm_rich if progress else None,
                     )  # type: ignore[arg-type]
             _validate_stage_revision(stage, expected_files, sha)
             reconcile_model_files(stage, expected_files)
@@ -139,6 +139,8 @@ class Model(BaseModel):
         finally:
             remove_path(stage)
         self.commit = sha
+        payload_files = [file for file in self.walk() if not file.is_relative_to(self.path / _LOCAL_METADATA_ROOT)]
+        return {"files": len(payload_files), "bytes": sum(file.stat().st_size for file in payload_files)}
 
     def cleanup(self) -> bool:
         """Clean up a downloaded model and all files"""
