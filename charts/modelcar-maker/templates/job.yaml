@@ -3,10 +3,11 @@
 {{- $needsCustomCa := ne "" .Values.certificateAuthorities.custom }}
 {{- $needsCa := or $needsCustomCa (or $needsClusterCa $needsServiceCa) }}
 {{- $needsAuthfile := not .Values.modelcar.dockerConfigJson }}
+{{- if .Values.models }}
 apiVersion: batch/v1
 kind: Job
 metadata:
-  name: {{ include "modelcar-maker.fullname" . }}-{{ include "modelcar-maker.config-hash" . | substr 0 7 }}
+  name: {{ include "modelcar-maker.job-name" . }}
   namespace: {{ .Release.Namespace }}
   labels:
     {{- include "modelcar-maker.labels" . | nindent 4 }}
@@ -72,8 +73,9 @@ spec:
             - |-
               token="$(cat /var/run/secrets/kubernetes.io/serviceaccount/token)"
               auth_string="$(echo -n "serviceaccount:${token}" | base64 -w0)"
-              mkdir -p /modelcar-maker/.docker
-              cat << EOF > /modelcar-maker/.docker/config.json
+              umask 077
+              mkdir -p /registry-credentials/.docker
+              cat << EOF > /registry-credentials/.docker/config.json
               {
                 "auths": {
                   "{{ .Values.modelcar.image.registry }}": {
@@ -82,9 +84,10 @@ spec:
                 }
               }
               EOF
+              chmod 600 /registry-credentials/.docker/config.json
           volumeMounts:
-            - name: workspace
-              mountPath: /modelcar-maker
+            - name: registry-credentials
+              mountPath: /registry-credentials
           securityContext:
             {{- toYaml .Values.securityContext | nindent 12 }}
           {{- with .Values.resources }}
@@ -128,6 +131,10 @@ spec:
               mountPath: /modelcar-maker/.docker/config.json
               subPath: config.json
             {{- end }}
+            {{- if $needsAuthfile }}
+            - name: registry-credentials
+              mountPath: /modelcar-maker/.docker
+            {{- end }}
             {{- if $needsCa }}
             - name: extracted-cas
               mountPath: /etc/pki/ca-trust/extracted
@@ -163,6 +170,11 @@ spec:
               - key: .dockerconfigjson
                 path: config.json
         {{- end }}
+        {{- if $needsAuthfile }}
+        - name: registry-credentials
+          emptyDir:
+            medium: Memory
+        {{- end }}
         {{- if $needsCa }}
         - name: extracted-cas
           emptyDir: {}
@@ -190,3 +202,4 @@ spec:
       nodeSelector:
         {{- toYaml . | nindent 8 }}
       {{- end }}
+{{- end }}

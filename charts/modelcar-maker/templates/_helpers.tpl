@@ -43,10 +43,48 @@ app.kubernetes.io/managed-by: {{ .Release.Service }}
 {{- end }}
 
 {{/*
-Config hash (for unique job naming)
+Hash all inputs that affect a Job execution. Credential contents are deliberately
+not included: the credential mode and the identity of the rendered Secret are.
 */}}
 {{- define "modelcar-maker.config-hash" -}}
 {{- include (print $.Template.BasePath "/configmap.yaml") . | sha256sum -}}
+{{- end -}}
+
+{{/*
+Create a stable identity for a Job execution.
+*/}}
+{{- define "modelcar-maker.job-hash" -}}
+{{- $credential := dict "mode" "generated-service-account" "serviceAccount" (include "modelcar-maker.serviceAccountName" .) -}}
+{{- if .Values.modelcar.dockerConfigJson -}}
+{{- $credential = dict "mode" "explicit-docker-config" "secretName" (printf "%s-push" (include "modelcar-maker.fullname" .)) "secretKey" ".dockerconfigjson" -}}
+{{- end -}}
+{{- $inputs := dict
+  "renderedConfig" (include (print $.Template.BasePath "/configmap.yaml") .)
+  "models" .Values.models
+  "jobImage" (include "modelcar-maker.image-name" .)
+  "credentials" $credential
+  "certificateAuthorities" .Values.certificateAuthorities
+  "workspace" .Values.workspace
+  "resources" .Values.resources
+  "podSecurityContext" .Values.podSecurityContext
+  "securityContext" .Values.securityContext
+  "environment" .Values.modelcar.env
+  "podAnnotations" .Values.podAnnotations
+  "tolerations" .Values.tolerations
+  "nodeSelector" .Values.nodeSelector
+  "serviceAccount" .Values.serviceAccount
+  "pullPolicy" .Values.image.pullPolicy
+  "backoffLimit" .Values.backoffLimit
+  "chartAppVersion" .Chart.AppVersion
+  "release" (dict "name" .Release.Name "namespace" .Release.Namespace "service" .Release.Service) -}}
+{{- $inputs | toJson | sha256sum -}}
+{{- end -}}
+
+{{/* Create a DNS-label-safe Job name with a 16-character execution hash. */}}
+{{- define "modelcar-maker.job-name" -}}
+{{- $hash := include "modelcar-maker.job-hash" . | trunc 16 -}}
+{{- $base := include "modelcar-maker.fullname" . | trunc (int (sub 63 (add 1 (len $hash)))) | trimSuffix "-" -}}
+{{- printf "%s-%s" $base $hash -}}
 {{- end -}}
 
 {{/*

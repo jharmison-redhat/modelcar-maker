@@ -1,3 +1,4 @@
+{{- if .Values.models }}
 Publishing the following models:
 {{ range $model := .Values.models }}
   https://huggingface.co/{{ $model.repo }} --> {{ include "modelcar-maker.modelcar-destination-image" (list $model $) }}
@@ -6,5 +7,9 @@ Publishing the following models:
 To follow the modelcar-maker logs, run:
 
 ```
-{{ if .Values.modelcar.imageStream.create }}oc{{ else }}kubectl{{ end }} logs -n {{ .Release.Namespace }} job/{{ include "modelcar-maker.fullname" . }}-{{ include "modelcar-maker.config-hash" . | substr 0 7 }} -f
+{{ if .Values.modelcar.imageStream.create }}oc{{ else }}kubectl{{ end }} logs -n {{ .Release.Namespace }} job/{{ include "modelcar-maker.job-name" . }} -f
 ```
+{{- else }}
+No models are configured, so this release is inactive and no Job was created.
+Set `models` to a non-empty list to create a modelcar-maker Job.
+{{- end }}

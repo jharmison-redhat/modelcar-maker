@@ -1,4 +1,4 @@
-{{- if .Values.imagePuller.create }}
+{{- if and .Values.imagePuller.create .Values.models }}
 apiVersion: apps/v1
 kind: DaemonSet
 metadata:

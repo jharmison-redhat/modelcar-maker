@@ -1,0 +1,137 @@
+{
+  "$schema": "https://json-schema.org/draft-07/schema#",
+  "title": "modelcar-maker chart values",
+  "type": "object",
+  "properties": {
+    "nameOverride": { "type": "string" },
+    "fullnameOverride": { "type": "string" },
+    "huggingFace": {
+      "type": "object",
+      "properties": { "token": { "type": "string" } },
+      "additionalProperties": true
+    },
+    "image": {
+      "type": "object",
+      "properties": {
+        "registry": { "type": "string", "minLength": 1 },
+        "repository": { "type": "string", "minLength": 1 },
+        "tag": { "type": "string", "pattern": "^$|^[A-Za-z0-9_][A-Za-z0-9_.-]{0,127}$" },
+        "manifestHash": { "type": "string" },
+        "pullPolicy": { "enum": ["Always", "IfNotPresent", "Never"] }
+      },
+      "additionalProperties": true
+    },
+    "verbosity": { "type": "integer", "minimum": 0, "maximum": 3 },
+    "models": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "repo": { "type": "string", "minLength": 1 },
+          "files": { "type": "array", "items": { "type": "string", "minLength": 1 } },
+          "tag": { "type": "string", "pattern": "^[A-Za-z0-9_][A-Za-z0-9_.-]{0,127}$" },
+          "hidden": { "type": "boolean" }
+        },
+        "required": ["repo"],
+        "additionalProperties": true
+      }
+    },
+    "modelcar": {
+      "type": "object",
+      "properties": {
+        "image": {
+          "type": "object",
+          "properties": {
+            "registry": { "type": "string", "minLength": 1 },
+            "repository": { "type": "string", "minLength": 1 }
+          },
+          "required": ["registry", "repository"],
+          "additionalProperties": true
+        },
+        "imageStream": {
+          "type": "object",
+          "properties": {
+            "create": { "type": "boolean" },
+            "name": { "type": "string" },
+            "groups": { "type": "array", "items": { "type": "string", "minLength": 1 } }
+          },
+          "additionalProperties": true
+        },
+        "dockerConfigJson": { "type": "string" },
+        "skipIfExists": { "type": "boolean" },
+        "baseImage": { "type": "string", "minLength": 1 },
+        "baseImagePull": { "type": "boolean" },
+        "cleanup": { "type": "boolean" },
+        "maintainer": { "type": "string" },
+        "env": { "type": "object", "additionalProperties": { "type": ["string", "number", "boolean"] } }
+      },
+      "additionalProperties": true
+    },
+    "certificateAuthorities": {
+      "type": "object",
+      "properties": {
+        "openshiftClusterCa": { "type": "boolean" },
+        "custom": { "type": "string" }
+      },
+      "additionalProperties": true
+    },
+    "dataScienceConnections": {
+      "type": "object",
+      "properties": {
+        "create": { "type": "boolean" },
+        "namespace": { "type": "string" }
+      },
+      "additionalProperties": true
+    },
+    "imagePuller": {
+      "type": "object",
+      "properties": {
+        "create": { "type": "boolean" },
+        "updateStrategy": { "type": "object" },
+        "nodeSelector": { "type": "object", "additionalProperties": { "type": "string" } }
+      },
+      "additionalProperties": true
+    },
+    "workspace": {
+      "type": "object",
+      "properties": {
+        "type": { "enum": ["emptyDir", "pvc"] },
+        "emptyDir": { "type": "object" },
+        "pvc": {
+          "type": "object",
+          "properties": {
+            "size": { "type": "string", "minLength": 1 },
+            "storageClassName": { "type": "string" },
+            "accessModes": { "type": "array", "minItems": 1, "items": { "type": "string" } }
+          },
+          "additionalProperties": true
+        },
+        "modelCleanup": { "type": "boolean" }
+      },
+      "required": ["type"],
+      "additionalProperties": true,
+      "allOf": [
+        {
+          "if": { "properties": { "type": { "const": "pvc" } }, "required": ["type"] },
+          "then": { "required": ["pvc"] }
+        }
+      ]
+    },
+    "backoffLimit": { "type": "integer", "minimum": 0 },
+    "podSecurityContext": { "type": "object" },
+    "securityContext": { "type": "object" },
+    "resources": { "type": "object" },
+    "podAnnotations": { "type": "object", "additionalProperties": { "type": "string" } },
+    "tolerations": { "type": "array", "items": { "type": "object" } },
+    "nodeSelector": { "type": "object", "additionalProperties": { "type": "string" } },
+    "serviceAccount": {
+      "type": "object",
+      "properties": {
+        "create": { "type": "boolean" },
+        "name": { "type": "string" }
+      },
+      "additionalProperties": true
+    }
+  },
+  "additionalProperties": true
+}

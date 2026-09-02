@@ -211,6 +211,11 @@ lots of ways to make these, including by hand, using `podman login` with credent
 file it creates, etc. It doesn't require any special handling and is passed directly to `skopeo` as
 `~/.docker/config.json` which it always falls back to using.
 
+When `modelcar.dockerConfigJson` is empty, the chart supplies only credentials generated from the Job service account.
+They are written to a memory-backed ephemeral volume, not the workspace or PVC. This can authenticate pushes to the
+OpenShift internal registry or to an unauthenticated writable registry. Pushes to registries that require other,
+unprovided authentication will fail; inspect the retained Job logs for the registry error.
+
 ## License
 
 ISC. See [LICENSE](LICENSE).
