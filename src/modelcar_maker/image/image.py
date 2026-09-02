@@ -155,8 +155,9 @@ class Skopeo(BaseModel):
     def inspect(self, reference: str) -> Optional[str]:
         try:
             return skopeo_inspect(skopeo_ref=reference, **self._extra_args)
-        except subprocess.CalledProcessError:
-            logger.warning(f"Unable to inspect: {reference}")
+        except subprocess.CalledProcessError as error:
+            detail = error.stderr.strip() if error.stderr else str(error)
+            logger.warning(f"Unable to inspect {reference}: {detail}")
             return None
 
 

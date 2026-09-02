@@ -101,7 +101,10 @@ def _verify_image(image_tag: str, modelcard_path: str, model_name: str, normaliz
 
 
 @pytest.fixture
-def build_args() -> list[str]:
+def build_args(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> list[str]:
+    authfile = tmp_path / "auth.json"
+    authfile.write_text('{"auths": {}}')
+    monkeypatch.setenv("REGISTRY_AUTH_FILE", str(authfile))
     return [
         MODEL,
         "--no-push",
@@ -110,6 +113,8 @@ def build_args() -> list[str]:
         "localhost",
         "--repository",
         "modelcar-maker-integration-test",
+        "--authfile",
+        str(authfile),
         "-vvv",
     ]
 
