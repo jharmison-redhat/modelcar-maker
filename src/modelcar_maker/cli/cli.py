@@ -146,6 +146,17 @@ def build(
             resolve_path=True,
         ),
     ] = settings.image.get("authfile"),
+    service_account_auth: Annotated[
+        bool,
+        typer.Option(
+            "--service-account-auth/--no-service-account-auth",
+            help=(
+                "Construct a registry authfile from the projected ServiceAccount token before each registry "
+                "operation (modelcar-maker owns the docker config at ~/.docker/config.json, overriding any "
+                "pre-existing one). Mutually exclusive with --authfile."
+            ),
+        ),
+    ] = settings.image.get("service_account_auth", False),
     image_cleanup: Annotated[
         bool,
         typer.Option(
@@ -231,7 +242,15 @@ def build(
             raise typer.Exit(1)
         raise typer.BadParameter(str(error)) from error
 
-    skopeo = Skopeo(authfile=authfile)
+    if service_account_auth and authfile is not None:
+        raise typer.BadParameter(
+            "--service-account-auth and --authfile are mutually exclusive", param_hint="--service-account-auth"
+        )
+    skopeo = Skopeo(
+        authfile=authfile,
+        sa_authfile=(Path.home() / ".docker" / "config.json") if service_account_auth else None,
+        registry=registry,
+    )
     base = BaseImage(
         skopeo=skopeo,
         tagged_image=base_image,

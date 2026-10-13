@@ -253,7 +253,7 @@ def test_push_requires_remote_digest_after_successful_copy(tmp_path: Path, monke
         registry="registry",
         repository="repository",
     )
-    monkeypatch.setattr(image_module, "skopeo_push", lambda **kwargs: subprocess.CompletedProcess([], 0))
+    monkeypatch.setattr(image_module.subprocess, "run", lambda *args, **kwargs: subprocess.CompletedProcess([], 0))
     monkeypatch.setattr(image_module, "skopeo_inspect", lambda **kwargs: None)
 
     with pytest.raises(RuntimeError, match="could not determine its remote digest"):

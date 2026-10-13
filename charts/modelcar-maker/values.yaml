@@ -31,7 +31,10 @@ modelcar:
     groups: # list of OpenShift Groups to be authorized to pull the model (this allows pulls from any namespace or user by default)
       - system:authenticated
   # Set a skopeo-format config.json to use an explicit Docker credential Secret.
-  # When empty, the Job creates ephemeral credentials from its service-account token.
+  # When empty, the main container runs with --service-account-auth: modelcar-maker constructs the
+  # registry authfile at ~/.docker/config.json from the projected service-account token before each
+  # registry operation. The two credential modes are mutually exclusive: a Secret is never mapped
+  # into the same directory as the modelcar-maker-constructed config.json.
   dockerConfigJson: ""
   skipIfExists: true # set to false to update modelcars whenever job runs
   baseImage: registry.access.redhat.com/ubi10/ubi-micro:10.2

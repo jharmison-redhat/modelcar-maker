@@ -34,10 +34,6 @@ job_name() {
   perl -0ne 'print "$1\n" if /kind: Job\nmetadata:\n  name: ([^\n]+)/' "$1"
 }
 
-authfile_builder() {
-  perl -0ne 'print $1 if /- name: authfile-builder\n(.*?)(?=\n        - name:|\n      containers:)/s' "$1"
-}
-
 invalid_schema() {
   local name="$1"
   shift
@@ -63,17 +59,15 @@ forbid_pattern '^kind: DaemonSet$' "$tmpdir/default.yaml"
 helm install default "$chart" --dry-run=client --debug > "$tmpdir/default-notes.yaml" 2>&1
 require_pattern 'No models are configured, so this release is inactive' "$tmpdir/default-notes.yaml"
 
-# Generated service-account credentials use an isolated memory volume and its config is the main container's authfile.
+# Generated service-account credentials use an isolated memory volume; the main container gets the flag.
 render generated "$chart" --set models[0].repo=TinyLlama/TinyLlama-1.1B-Chat-v1.0
 require_pattern 'helm.sh/resource-policy: keep' "$tmpdir/generated.yaml"
 require_pattern 'name: registry-credentials' "$tmpdir/generated.yaml"
 require_pattern 'medium: Memory' "$tmpdir/generated.yaml"
-require_pattern 'mkdir -p /registry-credentials$' "$tmpdir/generated.yaml"
-require_pattern 'cat << EOF > /registry-credentials/config.json' "$tmpdir/generated.yaml"
-require_pattern 'chmod 600 /registry-credentials/config.json' "$tmpdir/generated.yaml"
-require_pattern 'mountPath: /modelcar-maker/.docker$' "$tmpdir/generated.yaml"
-authfile_builder "$tmpdir/generated.yaml" > "$tmpdir/authfile-builder.yaml"
-forbid_pattern 'name: workspace' "$tmpdir/authfile-builder.yaml"
+require_pattern 'mountPath: /modelcar-maker/\.docker$' "$tmpdir/generated.yaml"
+require_pattern '^          args:$' "$tmpdir/generated.yaml"
+require_pattern '^            - --service-account-auth$' "$tmpdir/generated.yaml"
+forbid_pattern 'authfile-builder' "$tmpdir/generated.yaml"
 forbid_pattern '/registry-credentials/\.docker' "$tmpdir/generated.yaml"
 
 # Explicit Docker credentials retain their Secret key and direct config.json mount and do not generate credentials.
@@ -82,11 +76,14 @@ require_pattern 'name: push-secret' "$tmpdir/explicit.yaml"
 require_pattern 'key: \.dockerconfigjson' "$tmpdir/explicit.yaml"
 require_pattern 'path: config.json' "$tmpdir/explicit.yaml"
 require_pattern 'mountPath: /modelcar-maker/.docker/config.json' "$tmpdir/explicit.yaml"
+require_pattern '^          args: \[\]$' "$tmpdir/explicit.yaml"
 forbid_pattern 'name: registry-credentials' "$tmpdir/explicit.yaml"
+forbid_pattern 'service-account-auth' "$tmpdir/explicit.yaml"
 
 # An external registry without explicit credentials uses the ephemeral service-account mode.
 render unauthenticated "$chart" --set models[0].repo=TinyLlama/TinyLlama-1.1B-Chat-v1.0 --set modelcar.image.registry=registry.example.test --set modelcar.image.repository=models --set modelcar.imageStream.create=false
 require_pattern 'name: registry-credentials' "$tmpdir/unauthenticated.yaml"
+require_pattern '^            - --service-account-auth$' "$tmpdir/unauthenticated.yaml"
 
 # Job identities are deterministic, respond to each execution-input category, and remain RFC 1123 labels.
 helm template identity "$chart" --set models[0].repo=TinyLlama/TinyLlama-1.1B-Chat-v1.0 > "$tmpdir/identity.yaml"

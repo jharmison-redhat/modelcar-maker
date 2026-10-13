@@ -11,7 +11,7 @@ runner = CliRunner()
 
 
 class FakeSkopeo:
-    def __init__(self, authfile=None):
+    def __init__(self, authfile=None, **kwargs):
         pass
 
 

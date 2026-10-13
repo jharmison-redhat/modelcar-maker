@@ -1,4 +1,5 @@
 import datetime
+import base64
 import hashlib
 import json
 import os
@@ -13,10 +14,10 @@ from typing import Optional
 
 from olot.backend.skopeo import skopeo_inspect
 from olot.backend.skopeo import skopeo_pull
-from olot.backend.skopeo import skopeo_push
 from olot.basics import oci_layers_on_top
 from pydantic import BaseModel
 from pydantic import ConfigDict
+from pydantic import PrivateAttr
 from pydantic import field_validator
 
 from ..__version__ import version as modelcar_maker_version
@@ -133,24 +134,87 @@ def _reference_at_digest(reference: str, digest: str) -> str:
     return f"{name}@{digest}"
 
 
+_SA_TOKEN_PATH = Path("/var/run/secrets/kubernetes.io/serviceaccount/token")
+
+
+def _write_sa_authfile(sa_authfile: Path, registry: str) -> None:
+    """Build a skopeo authfile from the projected service-account token, atomically.
+
+    modelcar-maker owns the whole file: no merge, no activation rules.
+    """
+    if not registry:
+        raise ValueError("registry must be set to construct a service-account authfile")
+    token = _SA_TOKEN_PATH.read_text().strip()
+    auth = base64.b64encode(f"serviceaccount:{token}".encode()).decode()
+    config = json.dumps({"auths": {registry: {"auth": auth}}})
+    fd, temp_name = tempfile.mkstemp(dir=sa_authfile.parent)
+    try:
+        os.fchmod(fd, 0o600)
+        with os.fdopen(fd, "w") as temp_file:
+            temp_file.write(config)
+        os.replace(temp_name, sa_authfile)
+    except OSError:
+        remove_path(Path(temp_name))
+        raise
+
+
 class Skopeo(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     authfile: Optional[Path] = None
+    sa_authfile: Optional[Path] = None
+    registry: Optional[str] = None
+
+    _fallback_dir: Optional[Path] = PrivateAttr(default=None)
+
+    @property
+    def _sa_target(self) -> Path:
+        """The authfile target in sa mode: the configured path, or a per-instance fallback dir.
+
+        # ponytail: fallback file lives for process lifetime (no cleanup) — fine in the ephemeral
+        # Job container; add context-managed cleanup if Skopeo is ever reused in a long-lived process.
+        """
+        if self.sa_authfile is not None and self.sa_authfile.parent.is_dir():
+            return self.sa_authfile
+        if self._fallback_dir is None:
+            self._fallback_dir = Path(tempfile.mkdtemp(prefix="modelcar-authfile-"))
+        return self._fallback_dir / "config.json"
 
     @property
     def _extra_args(self) -> dict[str, list[str]]:
         extra_args = dict()
         if self.authfile is not None:
             extra_args["params"] = ["--authfile", str(self.authfile)]
+        elif self.sa_authfile is not None and _SA_TOKEN_PATH.exists():
+            target = self._sa_target
+            try:
+                _write_sa_authfile(target, self.registry or "")
+            except OSError as error:
+                logger.warning(f"Unable to refresh service-account authfile at {target}: {error}")
+            else:
+                extra_args["params"] = ["--authfile", str(target)]
         return extra_args
 
     def pull(self, base_image: str, dest: Path) -> subprocess.CompletedProcess:
         dest.parent.mkdir(parents=True, exist_ok=True)
         return skopeo_pull(base_image=base_image, dest=dest, **self._extra_args)
 
-    def push(self, src: Path, dest: str) -> subprocess.CompletedProcess:
-        return skopeo_push(src=src, oci_ref=dest, **self._extra_args)
+    def push(self, src: Path, dest: str) -> None:
+        # olot's skopeo_push captures no output, so push directly to get matchable stderr on failure
+        command = [
+            "skopeo",
+            "copy",
+            "--multi-arch",
+            "all",
+            *self._extra_args.get("params", []),
+            f"oci:{src}:latest",
+            f"docker://{dest}",
+        ]
+        try:
+            subprocess.run(command, check=True, capture_output=True, text=True)
+        except subprocess.CalledProcessError as error:
+            detail = error.stderr.strip() if error.stderr else str(error)
+            raise RuntimeError(f"Failed to push {dest}: {detail}") from error
 
     def inspect(self, reference: str) -> Optional[str]:
         try:
@@ -389,9 +453,15 @@ class ModelcarImage(BaseModel):
 
     def push(self) -> str:
         """Pushes an image from the local layout directory to the remote registry"""
-        result = self.skopeo.push(src=self.layout_dir, dest=self.tagged_image)
-        if result.returncode != 0:
-            raise RuntimeError(f"Failed to push {self.tagged_image}: {result}")
+        sa_mode = self.skopeo.sa_authfile is not None and self.skopeo.authfile is None
+        try:
+            self.skopeo.push(src=self.layout_dir, dest=self.tagged_image)
+        except RuntimeError as error:
+            message = str(error).lower()
+            if not sa_mode or ("unauthorized" not in message and "authentication required" not in message):
+                raise
+            logger.warning(f"Push of {self.tagged_image} failed with an auth error, retrying once with a fresh token")
+            self.skopeo.push(src=self.layout_dir, dest=self.tagged_image)
         manifest = self.skopeo.inspect(reference=f"docker://{self.tagged_image}")
         if not manifest:
             raise RuntimeError(f"Pushed {self.tagged_image}, but could not determine its remote digest")

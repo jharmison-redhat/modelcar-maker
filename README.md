@@ -28,7 +28,8 @@ modelcar-maker [OPTIONS] [MODEL]
 | `--base-image`                             | Base OCI image. Default: `registry.access.redhat.com/ubi10/ubi-micro:10.2`.                                                                                    |
 | `--pull` / `--no-pull`                     | Resolve and atomically refresh the base-image cache. `--no-pull` reuses any usable existing cache without identity checks. Default: `--pull`.                                                                                            |
 | `--push` / `--no-push`                     | Push the image after building. Default: `--push`.                                                                                                              |
-| `-a`, `--authfile`                         | Path to skopeo-compatible authfile for registry push (used on push, pull, and inspect actions for `skopeo`, otherwise inherits default behavior).              |
+| `-a`, `--authfile`                         | Path to skopeo-compatible authfile for registry push (used on push, pull, and inspect actions for `skopeo`, otherwise inherits default behavior). Mutually exclusive with `--service-account-auth`.              |
+| `--service-account-auth` / `--no-service-account-auth` | Construct a registry authfile from the projected ServiceAccount token before each registry operation (modelcar-maker owns `~/.docker/config.json`). Default: `--no-service-account-auth`. |
 | `--image-clean-up` / `--no-image-clean-up` | Remove the local image layout after each requested model attempt. Default: `--no-image-clean-up`.                                                               |
 | `--model-clean-up` / `--no-model-clean-up` | Remove downloaded model files after each requested model attempt. Default: `--no-model-clean-up`.                                                              |
 | `--skip-if-exists` / `--no-skip-if-exists` | Skip if the tag already exists at the registry. Default: `--skip-if-exists`.                                                                                   |
@@ -232,13 +233,15 @@ For an explicit registry credential, set `modelcar.dockerConfigJson` inline in t
 creates the current generated Secret from that value and mounts it as the Docker config used by `skopeo`; supply a
 complete config that can pull the selected base image and push the destination image.
 
-When `modelcar.dockerConfigJson` is empty, service-account credentials are the only supplied credentials. The Job
-generates a Docker config from its service-account token and writes it only to a memory-backed ephemeral volume, never
-to the workspace or PVC. They can work with the OpenShift internal registry or an unauthenticated writable registry;
-other authentication failures appear in the Job logs.
+When `modelcar.dockerConfigJson` is empty, service-account credentials are the only supplied credentials. The main
+container runs `modelcar-maker --service-account-auth`, which constructs a Docker config from the live projected
+service-account token before every registry operation (the credential is always fresh, so builds outliving the token
+TTL still push). It writes it only to a memory-backed ephemeral volume, never to the workspace or PVC. They can work
+with the OpenShift internal registry or an unauthenticated writable registry; other authentication failures appear in
+the Job logs.
 
 The workspace can be an `emptyDir` or PVC. A PVC retains model and image workspace data when selected, but never the
-generated service-account Docker credentials.
+service-account Docker credentials.
 
 ### Troubleshooting
 

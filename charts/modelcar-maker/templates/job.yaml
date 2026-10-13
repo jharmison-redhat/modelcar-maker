@@ -26,7 +26,7 @@ spec:
       restartPolicy: Never
       securityContext:
         {{- toYaml .Values.podSecurityContext | nindent 8 }}
-      {{- if or $needsCa $needsAuthfile }}
+      {{- if $needsCa }}
       initContainers:
         {{- if $needsCa }}
         - name: ca-bundle-maker
@@ -62,39 +62,6 @@ spec:
             {{- toYaml . | nindent 12 }}
           {{- end }}
         {{- end }}
-        {{- if $needsAuthfile }}
-        - name: authfile-builder
-          image: {{ include "modelcar-maker.image-name" . }}
-          imagePullPolicy: {{ .Values.image.pullPolicy }}
-          command:
-            - /bin/sh
-          args:
-            - -c
-            - |-
-              token="$(cat /var/run/secrets/kubernetes.io/serviceaccount/token)"
-              auth_string="$(echo -n "serviceaccount:${token}" | base64 -w0)"
-              umask 077
-              mkdir -p /registry-credentials
-              cat << EOF > /registry-credentials/config.json
-              {
-                "auths": {
-                  "{{ .Values.modelcar.image.registry }}": {
-                    "auth": "${auth_string}"
-                  }
-                }
-              }
-              EOF
-              chmod 600 /registry-credentials/config.json
-          volumeMounts:
-            - name: registry-credentials
-              mountPath: /registry-credentials
-          securityContext:
-            {{- toYaml .Values.securityContext | nindent 12 }}
-          {{- with .Values.resources }}
-          resources:
-            {{- toYaml . | nindent 12 }}
-          {{- end }}
-        {{- end }}
       {{- end }}
       containers:
         - name: modelcar-maker
@@ -102,7 +69,12 @@ spec:
           imagePullPolicy: {{ .Values.image.pullPolicy }}
           command:
             - modelcar-maker
+          {{- if $needsAuthfile }}
+          args:
+            - --service-account-auth
+          {{- else }}
           args: []
+          {{- end }}
           env:
             - name: HOME
               value: /modelcar-maker
