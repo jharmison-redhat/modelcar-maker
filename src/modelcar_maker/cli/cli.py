@@ -12,8 +12,8 @@ from rich import print as rprint
 
 from ..image import BaseImage
 from ..image import ModelcarImage
+from ..image import SaCredentials
 from ..image import Skopeo
-from ..image.credentials import SaCredentials
 from ..model import Model
 from ..util import make_logger
 from ..util import settings
