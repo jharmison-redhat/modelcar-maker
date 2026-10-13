@@ -1,6 +1,7 @@
 import base64
 import hashlib
 import json
+import os
 import stat
 import subprocess
 from pathlib import Path
@@ -8,10 +9,13 @@ from pathlib import Path
 import pytest
 from pydantic import ValidationError
 
+import modelcar_maker.image.credentials as credentials_module
 import modelcar_maker.image.image as image_module
 from modelcar_maker.image import BaseImage
 from modelcar_maker.image import ModelcarImage
 from modelcar_maker.image import Skopeo
+from modelcar_maker.image.credentials import SaCredentials
+from modelcar_maker.image.credentials import write_sa_authfile
 from modelcar_maker.image.image import _reference_at_digest
 from modelcar_maker.model import Model
 
@@ -344,7 +348,7 @@ def test_image_digest_reads_oci_index(tmp_path: Path, monkeypatch) -> None:
 def fake_token(tmp_path: Path, monkeypatch):
     token_path = tmp_path / "token"
     token_path.write_text("tok-123")
-    monkeypatch.setattr(image_module, "_SA_TOKEN_PATH", token_path)
+    monkeypatch.setattr(credentials_module, "SA_TOKEN_PATH", token_path)
     return token_path
 
 
@@ -361,7 +365,7 @@ def _make_image(tmp_path: Path, monkeypatch, skopeo: Skopeo) -> ModelcarImage:
 
 def test_write_sa_authfile_scheme_mode_and_atomicity(tmp_path: Path, fake_token) -> None:
     target = tmp_path / "config.json"
-    image_module._write_sa_authfile(target, "registry.example:5000")
+    credentials_module.write_sa_authfile(target, "registry.example:5000")
 
     contents = target.read_text()
     expected_auth = base64.b64encode(b"serviceaccount:tok-123").decode()
@@ -372,19 +376,46 @@ def test_write_sa_authfile_scheme_mode_and_atomicity(tmp_path: Path, fake_token)
 
 def test_write_sa_authfile_requires_registry(tmp_path: Path, fake_token) -> None:
     with pytest.raises(ValueError, match="registry"):
-        image_module._write_sa_authfile(tmp_path / "config.json", "")
+        write_sa_authfile(tmp_path / "config.json", "")
 
 
 def test_write_sa_authfile_overwrites_atomically(tmp_path: Path, fake_token) -> None:
     target = tmp_path / "config.json"
     target.write_text("stale")
-    image_module._write_sa_authfile(target, "registry.example")
+    credentials_module.write_sa_authfile(target, "registry.example")
     assert "serviceaccount:tok-123" in base64.b64decode(target.read_text().split('"auth": "')[1].split('"')[0]).decode()
 
 
+def test_write_sa_authfile_fchmod_failure_closes_fd_and_cleans_up(tmp_path: Path, fake_token, monkeypatch) -> None:
+    target = tmp_path / "config.json"
+
+    real_mkstemp = credentials_module.tempfile.mkstemp
+    captured = {}
+
+    def mkstemp(**kwargs):
+        fd, name = real_mkstemp(**kwargs)
+        captured["fd"] = fd
+        captured["name"] = name
+        return fd, name
+
+    monkeypatch.setattr(credentials_module.tempfile, "mkstemp", mkstemp)
+
+    def broken_fchmod(*args):
+        raise OSError("fchmod failed")
+
+    monkeypatch.setattr(credentials_module.os, "fchmod", broken_fchmod)
+
+    with pytest.raises(OSError, match="fchmod failed"):
+        credentials_module.write_sa_authfile(target, "registry.example")
+
+    assert not Path(captured["name"]).exists()  # temp file removed
+    with pytest.raises(OSError):  # fd is closed
+        os.fstat(captured["fd"])
+
+
 def test_extra_args_no_token_emits_nothing(tmp_path: Path, monkeypatch) -> None:
-    monkeypatch.setattr(image_module, "_SA_TOKEN_PATH", tmp_path / "absent")
-    skopeo = Skopeo(sa_authfile=tmp_path / ".docker" / "config.json", registry="registry.example")
+    monkeypatch.setattr(credentials_module, "SA_TOKEN_PATH", tmp_path / "absent")
+    skopeo = Skopeo(sa=SaCredentials(authfile=tmp_path / ".docker" / "config.json", registry="registry.example"))
     assert skopeo._extra_args == {}
 
 
@@ -400,7 +431,7 @@ def test_extra_args_sa_mode_builds_authfile_at_target(tmp_path: Path, fake_token
     docker_dir = tmp_path / ".docker"
     docker_dir.mkdir()
     target = docker_dir / "config.json"
-    skopeo = Skopeo(sa_authfile=target, registry="registry.example")
+    skopeo = Skopeo(sa=SaCredentials(authfile=target, registry="registry.example"))
 
     args = skopeo._extra_args
 
@@ -413,7 +444,7 @@ def test_extra_args_sa_mode_builds_authfile_at_target(tmp_path: Path, fake_token
 
 
 def test_extra_args_sa_mode_registry_missing_raises(tmp_path: Path, fake_token) -> None:
-    skopeo = Skopeo(sa_authfile=tmp_path / "config.json")
+    skopeo = Skopeo(sa=SaCredentials(authfile=tmp_path / "config.json", registry=""))
     with pytest.raises(ValueError, match="registry"):
         _ = skopeo._extra_args
 
@@ -421,7 +452,7 @@ def test_extra_args_sa_mode_registry_missing_raises(tmp_path: Path, fake_token) 
 def test_push_retries_once_with_fresh_authfile(tmp_path: Path, fake_token, monkeypatch) -> None:
     target = tmp_path / ".docker" / "config.json"
     target.parent.mkdir()
-    skopeo = Skopeo(sa_authfile=target, registry="registry.example")
+    skopeo = Skopeo(sa=SaCredentials(authfile=target, registry="registry.example"))
     image = _make_image(tmp_path, monkeypatch, skopeo)
 
     calls = []
@@ -471,7 +502,7 @@ def test_push_no_retry_with_explicit_authfile(tmp_path: Path, fake_token, monkey
 
 
 def test_push_no_retry_on_non_auth_failure(tmp_path: Path, fake_token, monkeypatch) -> None:
-    skopeo = Skopeo(sa_authfile=tmp_path / "config.json", registry="registry.example")
+    skopeo = Skopeo(sa=SaCredentials(authfile=tmp_path / "config.json", registry="registry.example"))
     image = _make_image(tmp_path, monkeypatch, skopeo)
 
     calls = []

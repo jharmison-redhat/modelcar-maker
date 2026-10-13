@@ -13,6 +13,7 @@ from rich import print as rprint
 from ..image import BaseImage
 from ..image import ModelcarImage
 from ..image import Skopeo
+from ..image.credentials import SaCredentials
 from ..model import Model
 from ..util import make_logger
 from ..util import settings
@@ -248,8 +249,9 @@ def build(
         )
     skopeo = Skopeo(
         authfile=authfile,
-        sa_authfile=(Path.home() / ".docker" / "config.json") if service_account_auth else None,
-        registry=registry,
+        sa=SaCredentials(
+            authfile=Path.home() / ".docker" / "config.json", registry=registry
+        ) if service_account_auth else None,
     )
     base = BaseImage(
         skopeo=skopeo,
