@@ -195,3 +195,16 @@ def test_shared_base_failure_stops_without_retry_and_sets_top_level_error(monkey
     assert data["status"] == "failed"
     assert "shared base image cache" in data["error"]
     assert "base unavailable" in data["error"]
+
+
+def test_service_account_auth_and_authfile_are_mutually_exclusive(tmp_path) -> None:
+    authfile = tmp_path / "auth.json"
+    authfile.write_text("user")
+
+    result = runner.invoke(
+        cli_module.cli,
+        ["build", "-a", str(authfile), "--service-account-auth"],
+    )
+
+    assert result.exit_code == 2
+    assert "mutually exclusive" in result.stderr
