@@ -436,9 +436,7 @@ def test_extra_args_sa_mode_builds_authfile_at_target(tmp_path: Path, fake_token
     args = skopeo._extra_args
 
     assert args == {"params": ["--authfile", str(target)]}
-    assert b"serviceaccount:tok-123" in base64.b64decode(
-        target.read_text().split('"auth": "')[1].split('"')[0]
-    )
+    assert b"serviceaccount:tok-123" in base64.b64decode(target.read_text().split('"auth": "')[1].split('"')[0])
     # temp file lived in the target's parent dir (same-filesystem replace)
     assert list(docker_dir.iterdir()) == [target]
 

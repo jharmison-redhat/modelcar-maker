@@ -21,16 +21,7 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-dev = [
-  "build",
-  "black",
-  "flake8",
-  "isort",
-  "mypy",
-  "pyright",
-  "pytest",
-  "tox",
-]
+dev = ["build", "black", "flake8", "isort", "mypy", "pyright", "pytest", "tox"]
 
 [project.urls]
 Source = "https://github.com/jharmison-redhat/modelcar-maker"
@@ -65,6 +56,5 @@ markers = ["slow: marks tests as slow (deselect with -m 'not slow')"]
 
 [tool.pyright]
 include = ["src", "tests"]
-exclude = ["spikes"]
 pythonVersion = "3.11"
 typeCheckingMode = "standard"
