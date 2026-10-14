@@ -5,5 +5,5 @@ description: >
   OpenShift AI integration through Data Science Connections and the Model Registry.
 
 type: application
-version: 0.8.5
-appVersion: "0.8.0"
+version: 0.8.6
+appVersion: "0.8.1"
