@@ -16,6 +16,7 @@ from typer.testing import CliRunner
 from modelcar_maker.cli.cli import cli
 from modelcar_maker.model import Model
 from modelcar_maker.util import normalize
+from modelcar_maker.util import settings
 
 runner = CliRunner()
 
@@ -190,3 +191,55 @@ def test_build_real_model_no_push_olot(build_args: list[str]) -> None:
     assert cleanup_result.exit_code == 0, cleanup_result.output
     assert not Model(repo_id=MODEL).exists()
     assert not OLOT_LAYOUT_DIR.joinpath("index.json").exists()
+
+
+@pytest.mark.slow
+def test_build_real_model_cleanup_prunes_sources_during_build(
+    build_args: list[str], request: pytest.FixtureRequest
+) -> None:
+    """With models.cleanup enabled, olot prunes each source file as its blob is staged.
+
+    --no-model-clean-up keeps the CLI's post-build model dir removal out of the picture, so pruned
+    source files prove the pruning happened inside build() while the layout (and its blobs) remain.
+    """
+    if not _which("skopeo"):
+        pytest.skip("skopeo is required for the base image pull")
+    if OLOT_LAYOUT_DIR.exists():
+        shutil.rmtree(OLOT_LAYOUT_DIR, ignore_errors=True)
+
+    # Settings are loaded at CLI import time, so a runtime override is needed rather than an env var.
+    # Restore the previous value afterwards so it doesn't leak into other tests.
+    original_cleanup = settings.models.cleanup
+    request.addfinalizer(lambda: settings.set("MODELS__CLEANUP", original_cleanup))
+    settings.set("MODELS__CLEANUP", True)
+    result = runner.invoke(cli, [*build_args, "--no-model-clean-up"])
+    assert result.exit_code == 0, result.output
+
+    # Model files were pruned during the build, but the modelcard was passed separately and survives.
+    for fname in ("config.json", "pytorch_model.bin", "vocab.txt"):
+        assert not (MODEL_DIR / fname).exists(), f"Expected {fname} to be pruned during build"
+    assert (MODEL_DIR / "README.md").exists(), "Expected modelcard to survive the build"
+
+    # The layout (and its staged blobs) is intact since no image cleanup was requested.
+    blobs = OLOT_LAYOUT_DIR / "blobs" / "sha256"
+    assert blobs.is_dir(), "Expected blob store under the layout"
+    assert any(blobs.iterdir()), "Expected staged blobs under the layout"
+    assert OLOT_LAYOUT_DIR.joinpath("index.json").exists()
+
+
+@pytest.mark.slow
+def test_build_real_model_no_cleanup_keeps_sources(build_args: list[str]) -> None:
+    """Without models.cleanup, source model files survive the build."""
+    if not _which("skopeo"):
+        pytest.skip("skopeo is required for the base image pull")
+    if OLOT_LAYOUT_DIR.exists():
+        shutil.rmtree(OLOT_LAYOUT_DIR, ignore_errors=True)
+
+    result = runner.invoke(cli, build_args)
+    assert result.exit_code == 0, result.output
+
+    for fname in EXPECTED_FILES:
+        assert (MODEL_DIR / fname).exists(), f"Expected {fname} to survive the build"
+    blobs = OLOT_LAYOUT_DIR / "blobs" / "sha256"
+    assert blobs.is_dir()
+    assert any(blobs.iterdir())

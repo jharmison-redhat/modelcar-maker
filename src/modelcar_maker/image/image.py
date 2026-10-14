@@ -14,19 +14,20 @@ from typing import Optional
 from olot.backend.skopeo import skopeo_inspect
 from olot.backend.skopeo import skopeo_pull
 from olot.basics import oci_layers_on_top
+from olot.enums import RemoveOriginals
 from pydantic import BaseModel
 from pydantic import ConfigDict
 from pydantic import field_validator
 
 from ..__version__ import version as modelcar_maker_version
 from ..model import Model
-from .credentials import SaCredentials
 from ..util import atomic_replace_directory
 from ..util import cleanup
 from ..util import logger
 from ..util import normalize
 from ..util import remove_path
 from ..util import settings
+from .credentials import SaCredentials
 
 _OCI_TAG = re.compile(r"^[A-Za-z0-9_][A-Za-z0-9_.-]{0,127}$")
 _SHA256_DIGEST = re.compile(r"^sha256:[0-9a-f]{64}$")
@@ -384,6 +385,9 @@ class ModelcarImage(BaseModel):
 
         logger.info(f"Adding model files from {self.model.path} to {self.layout_dir} now")
         logger.debug(f"model_files={filtered_model_files}")
+        # Models.cleanup deletes the whole model dir post-build anyway, so DEFAULT (which keeps the ModelCarD on
+        # disk during staging) yields the same end state while pruning each source file as its blob is staged.
+        remove_originals = RemoveOriginals.DEFAULT if settings.models.cleanup else None
         oci_layers_on_top(
             ocilayout=self.layout_dir,
             model_files=filtered_model_files,
@@ -391,6 +395,7 @@ class ModelcarImage(BaseModel):
             labels=labels,
             annotations=annotations,
             root_dir=self.model.path,
+            remove_originals=remove_originals,
         )
         return {
             "files": len(filtered_model_files) + (1 if model_card is not None else 0),

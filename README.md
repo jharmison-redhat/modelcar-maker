@@ -18,34 +18,35 @@ pip install modelcar-maker
 modelcar-maker [OPTIONS] [MODEL]
 ```
 
-| Argument / Option                          | Description                                                                                                                                                    |
-| ------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `MODEL`                                    | Hugging Face model repo ID (e.g., `meta-llama/Llama-3.2-3B-Instruct`). Optional if `models.default` is configured.                                             |
-| `-f`, `--files`                             | Specific files to download from the repo (can be specified more than once); without it, all repository files are downloaded. |
-| `--registry`                               | Registry for the output image. Default: `quay.io`.                                                                                                             |
-| `-r`, `--repository`                       | Repository within the registry. Default: `jharmison/models`.                                                                                                   |
-| `-t`, `--tag`                              | The tag to push with, otherwise build from normalized model name.                                                                                              |
-| `--base-image`                             | Base OCI image. Default: `registry.access.redhat.com/ubi10/ubi-micro:10.2`.                                                                                    |
-| `--pull` / `--no-pull`                     | Resolve and atomically refresh the base-image cache. `--no-pull` reuses any usable existing cache without identity checks. Default: `--pull`.                                                                                            |
-| `--push` / `--no-push`                     | Push the image after building. Default: `--push`.                                                                                                              |
-| `-a`, `--authfile`                         | Path to skopeo-compatible authfile for registry push (used on push, pull, and inspect actions for `skopeo`, otherwise inherits default behavior). Mutually exclusive with `--service-account-auth`.              |
-| `--service-account-auth` / `--no-service-account-auth` | Construct a registry authfile from the projected ServiceAccount token before each registry operation (modelcar-maker owns `~/.docker/config.json`). Default: `--no-service-account-auth`. |
-| `--image-clean-up` / `--no-image-clean-up` | Remove the local image layout after each requested model attempt. Default: `--no-image-clean-up`.                                                               |
-| `--model-clean-up` / `--no-model-clean-up` | Remove downloaded model files after each requested model attempt. Default: `--no-model-clean-up`.                                                              |
-| `--skip-if-exists` / `--no-skip-if-exists` | Skip if the tag already exists at the registry. Default: `--skip-if-exists`.                                                                                   |
-| `--output text\|json`                       | Output progress text (default) or one final JSON result document on stdout.                                                                                    |
-| `--quiet`                                   | Suppress text progress and success messages; errors still go to stderr.                                                                                        |
-| `--fail-fast`                               | Stop after the first model-specific failure. By default remaining models continue.                                                                             |
-| `-v`, `--verbose`                          | Increase logging verbosity. Repeat for more.                                                                                                                   |
-| `-V`, `--version`                          | Print version and exit.                                                                                                                                        |
+| Argument / Option                                      | Description                                                                                                                                                                                         |
+| ------------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `MODEL`                                                | Hugging Face model repo ID (e.g., `meta-llama/Llama-3.2-3B-Instruct`). Optional if `models.default` is configured.                                                                                  |
+| `-f`, `--files`                                        | Specific files to download from the repo (can be specified more than once); without it, all repository files are downloaded.                                                                        |
+| `--registry`                                           | Registry for the output image. Default: `quay.io`.                                                                                                                                                  |
+| `-r`, `--repository`                                   | Repository within the registry. Default: `jharmison/models`.                                                                                                                                        |
+| `-t`, `--tag`                                          | The tag to push with, otherwise build from normalized model name.                                                                                                                                   |
+| `--base-image`                                         | Base OCI image. Default: `registry.access.redhat.com/ubi10/ubi-micro:10.2`.                                                                                                                         |
+| `--pull` / `--no-pull`                                 | Resolve and atomically refresh the base-image cache. `--no-pull` reuses any usable existing cache without identity checks. Default: `--pull`.                                                       |
+| `--push` / `--no-push`                                 | Push the image after building. Default: `--push`.                                                                                                                                                   |
+| `-a`, `--authfile`                                     | Path to skopeo-compatible authfile for registry push (used on push, pull, and inspect actions for `skopeo`, otherwise inherits default behavior). Mutually exclusive with `--service-account-auth`. |
+| `--service-account-auth` / `--no-service-account-auth` | Construct a registry authfile from the projected ServiceAccount token before each registry operation (modelcar-maker owns `~/.docker/config.json`). Default: `--no-service-account-auth`.           |
+| `--image-clean-up` / `--no-image-clean-up`             | Remove the local image layout after each requested model attempt. Default: `--no-image-clean-up`.                                                                                                   |
+| `--model-clean-up` / `--no-model-clean-up`             | Remove downloaded model files while building each requested image after they're added, to save space. Default: `--no-model-clean-up`.                                                               |
+| `--skip-if-exists` / `--no-skip-if-exists`             | Skip if the tag already exists at the registry. Default: `--skip-if-exists`.                                                                                                                        |
+| `--output text\|json`                                  | Output progress text (default) or one final JSON result document on stdout.                                                                                                                         |
+| `--quiet`                                              | Suppress text progress and success messages; errors still go to stderr.                                                                                                                             |
+| `--fail-fast`                                          | Stop after the first model-specific failure. By default remaining models continue.                                                                                                                  |
+| `-v`, `--verbose`                                      | Increase logging verbosity. Repeat for more.                                                                                                                                                        |
+| `-V`, `--version`                                      | Print version and exit.                                                                                                                                                                             |
 
 **Image tag format:** `{registry}/{repository}:{specified tag or normalized-model}-modelcar`
 
-With `--output json`, stdout contains exactly one JSON document with the overall status, operation duration, and a result
-for each attempted model. Per-model results include status (`success`, `skipped`, or `failed`), durations, errors, and
-available payload, build, destination, and push metadata. The `download` object's `payload_files` and `payload_bytes`
-are totals in the resulting local payload, not counts of bytes transferred. Logs and diagnostics are written to stderr.
-A failed model makes the command exit nonzero; an operation with both successes and failures has status `partial`.
+With `--output json`, stdout contains exactly one JSON document with the overall status, operation duration, and a
+result for each attempted model. Per-model results include status (`success`, `skipped`, or `failed`), durations,
+errors, and available payload, build, destination, and push metadata. The `download` object's `payload_files` and
+`payload_bytes` are totals in the resulting local payload, not counts of bytes transferred. Logs and diagnostics are
+written to stderr. A failed model makes the command exit nonzero; an operation with both successes and failures has
+status `partial`.
 
 After download, image construction excludes files with any dot-prefixed path component, plus files named
 `Containerfile`, `original`, and `consolidated.safetensors`. Other downloaded files, including PyTorch files, are not
@@ -83,11 +84,10 @@ Settings are resolved in layer order (later layers override earlier ones):
 8. CLI arguments override all of the above
 
 Any setting can be overridden via environment variable by uppercasing the section and key and joining with double
-underscores.
-For example:
+underscores. For example:
 
-| Env Var                         | Overrides        |
-| ------------------------------- | ---------------- |
+| Env Var                          | Overrides        |
+| -------------------------------- | ---------------- |
 | `MODELCAR_MAKER_IMAGE__REGISTRY` | `image.registry` |
 | `MODELCAR_MAKER_IMAGE__PUSH`     | `image.push`     |
 | `MODELCAR_MAKER_MODELS__DEFAULT` | `models.default` |
@@ -235,10 +235,10 @@ complete config that can pull the selected base image and push the destination i
 
 When `modelcar.dockerConfigJson` is empty, service-account credentials are the only supplied credentials. The main
 container runs `modelcar-maker --service-account-auth`, which constructs a Docker config from the live projected
-service-account token before every registry operation (the credential is always fresh, so builds outliving the token
-TTL still push). It writes it only to a memory-backed ephemeral volume, never to the workspace or PVC. They can work
-with the OpenShift internal registry or an unauthenticated writable registry; other authentication failures appear in
-the Job logs.
+service-account token before every registry operation (the credential is always fresh, so builds outliving the token TTL
+still push). It writes it only to a memory-backed ephemeral volume, never to the workspace or PVC. They can work with
+the OpenShift internal registry or an unauthenticated writable registry; other authentication failures appear in the Job
+logs.
 
 The workspace can be an `emptyDir` or PVC. A PVC retains model and image workspace data when selected, but never the
 service-account Docker credentials.

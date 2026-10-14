@@ -1,4 +1,5 @@
 import json
+import signal
 import sys
 import time
 from dataclasses import asdict
@@ -211,6 +212,11 @@ def build(
     if output not in {"text", "json"}:
         raise typer.BadParameter("must be text or json", param_hint="--output")
     logger = make_logger(verbose)
+
+    def _on_sigterm(signum, frame):
+        raise KeyboardInterrupt
+
+    signal.signal(signal.SIGTERM, _on_sigterm)
     text_output = output == "text" and not quiet
     started = time.monotonic()
     results: list[ModelResult] = []
@@ -249,9 +255,11 @@ def build(
         )
     skopeo = Skopeo(
         authfile=authfile,
-        sa=SaCredentials(
-            authfile=Path.home() / ".docker" / "config.json", registry=registry
-        ) if service_account_auth else None,
+        sa=(
+            SaCredentials(authfile=Path.home() / ".docker" / "config.json", registry=registry)
+            if service_account_auth
+            else None
+        ),
     )
     base = BaseImage(
         skopeo=skopeo,
@@ -304,7 +312,8 @@ def build(
             primary_error = error
             result_status = "failed"
             logger.error("Failed processing %s: %s", repo_id, error)
-        cleanup_errors = _requested_cleanup(image, model, image_cleanup, model_cleanup)
+        finally:
+            cleanup_errors = _requested_cleanup(image, model, image_cleanup, model_cleanup)
         for cleanup_error in cleanup_errors:
             logger.error("Failed processing %s: %s", repo_id, cleanup_error)
         if primary_error is None and cleanup_errors:
