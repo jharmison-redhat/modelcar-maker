@@ -9,7 +9,7 @@ from typing import Annotated
 from typing import Optional
 
 import typer
-from rich import print as rprint
+from rich.console import Console
 
 from ..image import BaseImage
 from ..image import ModelcarImage
@@ -19,12 +19,14 @@ from ..model import Model
 from ..util import make_logger
 from ..util import settings
 
+console = Console(soft_wrap=True)
+
 
 def version_callback(value: bool):
     if value:
         from ..__version__ import version
 
-        rprint(version)
+        console.print(version)
         raise typer.Exit()
 
 
@@ -64,7 +66,7 @@ def _requested_cleanup(
 
 def _emit(message: str, enabled: bool) -> None:
     if enabled:
-        rprint(message)
+        console.print(message)
 
 
 cli = typer.Typer(
@@ -348,6 +350,6 @@ def build(
             )
         )
     elif not quiet and not failed:
-        rprint("Done! 🎉")
+        console.print("Done! 🎉")
     if failed:
         raise typer.Exit(1)
